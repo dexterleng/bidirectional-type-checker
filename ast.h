@@ -7,9 +7,9 @@ using Var = uint32_t;
 class TypedVar {
 public:
   Var var;
-  Type& type;
+  Type type;
 
-  TypedVar(Var var, Type &type)
+  TypedVar(Var var, Type type)
     : var(var),
       type(type) {
   }
@@ -58,12 +58,12 @@ public:
 template <typename V>
 class Function : public ASTNode<V> {
 public:
-  std::string_view name;
-  ASTNode<V>& body;
+  V arg;
+  std::shared_ptr<ASTNode<V>> body;
 
-  Function(const std::string_view &name, ASTNode<V> &body)
+  Function(const V &arg, const std::shared_ptr<ASTNode<V>> &body)
     : ASTNode<V>(ASTNodeKind::Function),
-      name(name),
+      arg(arg),
       body(body) {
   }
 };

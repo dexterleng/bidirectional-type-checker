@@ -18,9 +18,11 @@ struct IntegerType {};
 struct FunctionType {
   std::shared_ptr<Type> from;
   std::shared_ptr<Type> to;
+
+  FunctionType(std::shared_ptr<Type> from, std::shared_ptr<Type> to)
+    : from(std::move(from)), to(std::move(to)) {}
 };
 
-//
 // class Type {
 // public:
 //   virtual ~Type() = default;
@@ -40,6 +42,8 @@ struct FunctionType {
 //
 // class IntegerType : public Type {
 // public:
+//   explicit IntegerType() {}
+//
 //   void print() const override {
 //     std::cout << "IntegerType" << std::endl;
 //   }
