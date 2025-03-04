@@ -21,7 +21,6 @@ public:
   }
 };
 
-
 class PrettyPrinterVisitor : public ASTVisitor<Var, PrettyPrinterVisitor> {
 public:
   void visitInteger(Integer<Var> *node) {

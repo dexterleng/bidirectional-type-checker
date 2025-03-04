@@ -3,6 +3,7 @@
 
 #include <vector>
 #include "ast.h"
+#include "ast_visitor.h"
 #include "type_constraint.h"
 
 class GenOut {
@@ -16,6 +17,57 @@ public:
   }
 };
 
+using InferOut = std::pair<GenOut, Type>;
+
+class Infer: public ASTVisitor<
+  Var, Infer, InferOut,
+  std::unordered_map<Var, Type>&
+> {
+public:
+  InferOut visitInteger(Integer<Var> *node, std::unordered_map<Var, Type>& env) {
+    return {
+      GenOut({}, std::make_unique<Integer<TypedVar>>(node->literal)),
+      IntegerType{}
+    };
+  }
+
+  // Ast::Var(v) => {
+  //   let ty = &env[&v];
+  //   (
+  //     GenOut::new(
+  //       vec![],
+  //       // Return a `TypedVar` instead of `Var`
+  //       Ast::Var(TypedVar(v, ty.clone())
+  //     ),
+  //     ty.clone(),
+  //   )
+  // },
+  InferOut visitVariable(Variable<Var> *node, std::unordered_map<Var, Type>& env) {
+    auto type = env[*node->var];
+    return {
+      GenOut(
+        {},
+        std::make_unique<Variable<TypedVar>>(
+          std::make_unique<TypedVar>(
+            *node->var,
+            std::make_unique<Type>(type)
+          )
+        )
+      ),
+      type
+    };
+  }
+
+  InferOut visitFunction(Function<Var> *node, std::unordered_map<Var, Type>& env) {
+    // visit(node->body.get());
+  }
+
+  InferOut visitApply(Apply<Var> *node, std::unordered_map<Var, Type>& env) {
+    // visit(node->function.get());
+    // visit(node->argument.get());
+  }
+};
+
 class TypeInference {
 public:
   std::pair<GenOut, std::shared_ptr<Type>> infer(
@@ -23,20 +75,6 @@ public:
     const std::shared_ptr<ASTNode<Var>>& ast
   ) {
 
-    // if (auto intNode = dynamic_cast<const Integer<Var>*>(&ast)) {
-    //   return {
-    //     GenOut({}, std::make_shared<IntNode<TypedVar>>(int_node->value))
-    //   }
-    // }
-    // else if (auto varNode = dynamic_cast<const Variable<Var>*>(&ast)) {
-    // }
-    // else if (auto funNode = dynamic_cast<const Function<Var>*>(&ast)) {
-    // }
-    // else if (auto appNode = dynamic_cast<const Apply<Var>*>(&ast)) {
-    // }
-    // else {
-    //   throw std::runtime_error("Unknown AST node");
-    // }
   }
 };
 

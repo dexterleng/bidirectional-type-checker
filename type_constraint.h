@@ -19,8 +19,8 @@ public:
 
   void print() const override {
     std::cout << "TypeEqual Constraint:\n";
-    lhs->print();
-    rhs->print();
+    // lhs->print();
+    // rhs->print();
   }
 };
 

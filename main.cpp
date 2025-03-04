@@ -2,6 +2,7 @@
 
 #include "ast.h"
 #include "ast_visitor.h"
+#include "type_inference.h"
 
 int main() {
   std::cout << "Hello, World!" << std::endl;
@@ -11,6 +12,11 @@ int main() {
   auto applyNode = std::make_unique<Apply<Var>>(std::move(funcNode), std::move(intNode));
   PrettyPrinterVisitor printer;
   printer.visit(applyNode.get());
+
+  Infer infer;
+  std::unordered_map<Var, Type> env;
+  infer.visit(intNode.get(), env);
+
   std::cout << std::endl;
 
   return 0;
