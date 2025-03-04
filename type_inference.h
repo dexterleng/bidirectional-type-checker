@@ -24,9 +24,9 @@ class Infer: public ASTVisitor<
   std::unordered_map<Var, Type>&
 > {
 public:
-  InferOut visitInteger(Integer<Var> *node, std::unordered_map<Var, Type>& env) {
+  InferOut visitInteger(Integer<Var>& node, std::unordered_map<Var, Type>& env) {
     return {
-      GenOut({}, std::make_unique<Integer<TypedVar>>(node->literal)),
+      GenOut({}, std::make_unique<Integer<TypedVar>>(node.literal)),
       IntegerType{}
     };
   }
@@ -42,40 +42,40 @@ public:
   //     ty.clone(),
   //   )
   // },
-  InferOut visitVariable(Variable<Var> *node, std::unordered_map<Var, Type>& env) {
-    auto type = env[*node->var];
+  InferOut visitVariable(Variable<Var>& node, std::unordered_map<Var, Type>& env) {
+    auto type = env[node.var];
     return {
       GenOut(
         {},
         std::make_unique<Variable<TypedVar>>(
-          std::make_unique<TypedVar>(
-            *node->var,
-            std::make_unique<Type>(type)
-          )
+          TypedVar {
+            node.var,
+            type
+          }
         )
       ),
       type
     };
   }
 
-  InferOut visitFunction(Function<Var> *node, std::unordered_map<Var, Type>& env) {
+  // InferOut visitFunction(Function<Var> *node, std::unordered_map<Var, Type>& env) {
     // visit(node->body.get());
-  }
+  // }
 
-  InferOut visitApply(Apply<Var> *node, std::unordered_map<Var, Type>& env) {
+  // InferOut visitApply(Apply<Var> *node, std::unordered_map<Var, Type>& env) {
     // visit(node->function.get());
     // visit(node->argument.get());
-  }
+  // }
 };
 
-class TypeInference {
-public:
-  std::pair<GenOut, std::shared_ptr<Type>> infer(
-    const std::unordered_map<Var, Type>& env,
-    const std::shared_ptr<ASTNode<Var>>& ast
-  ) {
-
-  }
-};
+// class TypeInference {
+// public:
+//   std::pair<GenOut, std::shared_ptr<Type>> infer(
+//     const std::unordered_map<Var, Type>& env,
+//     const std::shared_ptr<ASTNode<Var>>& ast
+//   ) {
+//
+//   }
+// };
 
 #endif //TYPE_INFERENCE_H

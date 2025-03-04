@@ -7,15 +7,15 @@
 int main() {
   std::cout << "Hello, World!" << std::endl;
 
-  auto intNode = std::make_unique<Integer<Var>>("42");
-  auto funcNode = std::make_unique<Function<Var>>("square", std::make_unique<Integer<Var>>("0"));
-  auto applyNode = std::make_unique<Apply<Var>>(std::move(funcNode), std::move(intNode));
+  auto intNode = Integer<Var>("42");
+  auto funcNode = Function<Var>("square", intNode);
+  auto applyNode = Apply<Var>(funcNode, intNode);
   PrettyPrinterVisitor printer;
-  printer.visit(applyNode.get());
+  printer.visit(applyNode);
 
   Infer infer;
   std::unordered_map<Var, Type> env;
-  infer.visit(intNode.get(), env);
+  // infer.visit(intNode.get(), env);
 
   std::cout << std::endl;
 

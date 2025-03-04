@@ -7,11 +7,11 @@ using Var = uint32_t;
 class TypedVar {
 public:
   Var var;
-  std::unique_ptr<Type> type;
+  Type& type;
 
-  TypedVar(Var var, std::unique_ptr<Type> type)
+  TypedVar(Var var, Type &type)
     : var(var),
-      type(std::move(type)) {
+      type(type) {
   }
 };
 
@@ -47,30 +47,38 @@ public:
 template <typename V>
 class Variable : public ASTNode<V> {
 public:
-  std::unique_ptr<V> var;
+  V var;
 
-  explicit Variable(std::unique_ptr<V> var)
-  : ASTNode<V>(ASTNodeKind::Variable), var(std::move(var)) {}
+  Variable(const V &var)
+    : ASTNode<V>(ASTNodeKind::Variable),
+      var(var) {
+  }
 };
 
 template <typename V>
 class Function : public ASTNode<V> {
 public:
   std::string_view name;
-  std::unique_ptr<ASTNode<V>> body;
+  ASTNode<V>& body;
 
-  explicit Function(std::string_view name, std::unique_ptr<ASTNode<V>> body)
-    : ASTNode<V>(ASTNodeKind::Function), name(name), body(std::move(body)) {}
+  Function(const std::string_view &name, ASTNode<V> &body)
+    : ASTNode<V>(ASTNodeKind::Function),
+      name(name),
+      body(body) {
+  }
 };
 
 template <typename V>
 class Apply : public ASTNode<V> {
 public:
-  std::unique_ptr<ASTNode<V>> function;
-  std::unique_ptr<ASTNode<V>> argument;
+  ASTNode<V>& function;
+  ASTNode<V>& argument;
 
-  explicit Apply(std::unique_ptr<ASTNode<V>> function, std::unique_ptr<ASTNode<V>> argument)
-    : ASTNode<V>(ASTNodeKind::Apply), function(std::move(function)), argument(std::move(argument)) {}
+  Apply(ASTNode<V> &function, ASTNode<V> &argument)
+    : ASTNode<V>(ASTNodeKind::Apply),
+      function(function),
+      argument(argument) {
+  }
 };
 
 #endif //AST_H
