@@ -4,7 +4,6 @@
 #include <utility>
 #include <vector>
 #include "ast.h"
-#include "ast_visitor.h"
 #include "type_constraint.h"
 
 class GenOut {
@@ -18,42 +17,69 @@ public:
   }
 };
 
-using InferOut = std::pair<GenOut, Type>;
-
-class Infer: public ASTVisitor<
-  Var, Infer, InferOut,
-  std::unordered_map<Var, Type>&
-> {
+class InferOut {
 public:
-  InferOut visitInteger(Integer<Var>& node, std::unordered_map<Var, Type>& env) {
-    return {
-      GenOut(
-        {},
-        std::make_unique<Integer<TypedVar>>(node.literal)
-      ),
-      IntegerType{}
-    };
+  std::unique_ptr<GenOut> genOut;
+  std::shared_ptr<Type> type;
+
+  InferOut(std::unique_ptr<GenOut> gen_out, std::shared_ptr<Type> type)
+    : genOut(std::move(gen_out)),
+      type(type) {
+  }
+};
+
+class TypeInference {
+public:
+  std::unordered_map<Var, std::shared_ptr<Type>> env;
+
+  TypeInference() = default;
+
+  InferOut infer(
+    ASTNode<Var>& node
+  ) {
+    switch (node.kind) {
+      case ASTNodeKind::Integer:
+        return inferInteger(static_cast<IntegerNode<Var>&>(node));
+      case ASTNodeKind::Variable:
+        return inferVariable(static_cast<VariableNode<Var>&>(node));
+      case ASTNodeKind::Function:
+        return inferFunction(static_cast<FunctionNode<Var>&>(node));
+      case ASTNodeKind::Apply:
+        return inferApply(static_cast<ApplyNode<Var>&>(node));
+      default:
+        throw std::runtime_error("Unknown AST node kind");
+    }
   }
 
-  InferOut visitVariable(Variable<Var>& node, std::unordered_map<Var, Type>& env) {
-    Type& type = env[node.var];
-    return {
-      GenOut(
-        {},
-        std::make_unique<Variable<TypedVar>>(
+private:
+  InferOut inferInteger(IntegerNode<Var>& node) {
+    return InferOut(
+      std::make_unique<GenOut>(
+        std::vector<std::unique_ptr<TypeConstraint>>(),
+        std::make_shared<IntegerNode<TypedVar>>(node.literal)
+      ),
+      std::make_shared<IntegerType>()
+    );
+  }
+
+  InferOut inferVariable(VariableNode<Var>& node) {
+    return InferOut(
+      std::make_unique<GenOut>(
+        std::vector<std::unique_ptr<TypeConstraint>>(),
+        std::make_shared<VariableNode<TypedVar>>(
           TypedVar {
             node.var,
-            type
+            env[node.var]
           }
         )
       ),
-      std::move(type)
-    };
+      env[node.var]
+    );
   }
 
-  InferOut visitFunction(Function<Var>& node, std::unordered_map<Var, Type>& env) {
+  InferOut inferFunction(FunctionNode<Var>& node) {
     // setup env to revert
-    std::optional<Type> oldValue;
+    std::optional<std::shared_ptr<Type>> oldValue;
     auto it = env.find(node.arg);
     if (it != env.end()) {
       oldValue = std::make_optional(it->second);
@@ -61,11 +87,10 @@ public:
 
     // insert arg into env
     TypeVar argumentTypeVar = freshTypeVar();
-    env[node.arg] = VariableType(argumentTypeVar);
+    env[node.arg] = std::make_shared<VariableType>(argumentTypeVar);
 
-    auto bodyInferOut = visit(*node.body, env);
-    auto bodyGenOut = std::move(bodyInferOut.first);
-    auto bodyType = bodyInferOut.second;
+    // infer the body
+    auto bodyInferOut = infer(*node.body);
 
     // revert changes to env
     if (auto value = oldValue) {
@@ -74,78 +99,101 @@ public:
       env.erase(node.arg);
     }
 
-    auto functionNode = Function<TypedVar>(
-      TypedVar(node.arg, VariableType(argumentTypeVar)),
-      std::move(bodyGenOut.typed_ast)
-    );
-    auto genOut = GenOut { bodyGenOut.constraints, std::make_shared<Function<TypedVar>>(functionNode) };
-
-    auto functionType = FunctionType(
-      std::static_pointer_cast<Type>(
+    auto functionNode = FunctionNode<TypedVar>(
+      TypedVar(
+        node.arg,
         std::make_shared<VariableType>(argumentTypeVar)
       ),
-      std::make_shared<Type>(bodyType)
+      bodyInferOut.genOut->typed_ast
     );
-    return {
-      genOut,
-      functionType
-    };
+
+    return InferOut(
+      std::make_unique<GenOut>(
+        std::move(bodyInferOut.genOut->constraints),
+        std::make_shared<FunctionNode<TypedVar>>(functionNode)
+      ),
+      std::make_unique<FunctionType>(
+        std::make_shared<VariableType>(argumentTypeVar),
+        bodyInferOut.type
+      )
+    );
   }
+
+  InferOut inferApply(ApplyNode<Var>& node) {
+    throw std::runtime_error("Unimplemented");
+  //   // Infer the type of the argument
+  //   auto argInferOut = infer(node.argument, env);
+  //   GenOut argGenOut = std::move(argInferOut.first);
+  //   auto argType = argInferOut.second;
+  //
+  //   // Generate a fresh return type variable
+  //   TypeVar returnTypeVar = freshTypeVar();
+  //   auto returnType = VariableType(returnTypeVar);
+  //
+  //   // Expected function type
+  //   auto functionType = FunctionType(
+  //     std::make_shared<Type>(argType),
+  //     std::make_shared<Type>(returnType)
+  //   );
+  //
+  //   // Check the function type
+  //   GenOut funGenOut = check(node.function, env, functionType);
+  //
+  //   // Collect constraints from both argument and function
+  //   std::vector<std::unique_ptr<TypeConstraint>> constraints;
+  //   for (auto& constraint : argGenOut.constraints) {
+  //     constraints.push_back(std::move(constraint));
+  //   }
+  //   for (auto& constraint : funGenOut.constraints) {
+  //     constraints.push_back(std::move(constraint));
+  //   }
+  //
+  //   // Construct the new Apply node with typed AST
+  //   auto applyNode = ApplyNode<TypedVar>(
+  //     *funGenOut.typed_ast,
+  //     *argGenOut.typed_ast
+  //   );
+  //
+  //   auto genOut = GenOut {
+  //     std::move(constraints),
+  //     std::make_shared<ApplyNode<TypedVar>>(applyNode)
+  //   };
+  //
+  //   return { genOut, returnType };
+  }
+
+  GenOut check(
+  ASTNode<Var>& node,
+  std::unordered_map<Var, Type>& env
+) {
+    // switch (node.kind) {
+    //   case ASTNodeKind::Integer:
+    //     return inferInteger(static_cast<Integer<Var>&>(node), env);
+    //   case ASTNodeKind::Variable:
+    //     return inferVariable(static_cast<Variable<Var>&>(node), env);
+    //   case ASTNodeKind::Function:
+    //     return inferFunction(static_cast<Function<Var>&>(node), env);
+    //   case ASTNodeKind::Apply:
+    //     return inferApply(static_cast<Apply<Var>&>(node), env);
+    //   default:
+    //     throw std::runtime_error("Unknown AST node kind");
+    // }
+  }
+
+
+
+//   fn check(
+//   &mut self,
+//   ast: Ast<Var>,
+//   ty: Type
+// ) -> GenOut {
+//     match (ast, ty) {
+//       // ...
+//     }
+//   }
 
   TypeVar freshTypeVar() {
     return 0;
-  }
-
-  InferOut visitApply(Apply<Var>& node, std::unordered_map<Var, Type>& env) {
-    // Infer the type of the argument
-    auto argInferOut = visit(node.argument, env);
-    GenOut argGenOut = std::move(argInferOut.first);
-    auto argType = argInferOut.second;
-
-    // Generate a fresh return type variable
-    TypeVar returnTypeVar = freshTypeVar();
-    auto returnType = VariableType(returnTypeVar);
-
-    // Expected function type
-    auto functionType = FunctionType(
-      std::make_shared<Type>(argType),
-      std::make_shared<Type>(returnType)
-    );
-
-    // Check the function type
-    GenOut funGenOut = check(node.function, env, functionType);
-
-    // Collect constraints from both argument and function
-    std::vector<std::unique_ptr<TypeConstraint>> constraints;
-    for (auto& constraint : argGenOut.constraints) {
-      constraints.push_back(std::move(constraint));
-    }
-    for (auto& constraint : funGenOut.constraints) {
-      constraints.push_back(std::move(constraint));
-    }
-
-    // Construct the new Apply node with typed AST
-    auto applyNode = Apply<TypedVar>(
-      *funGenOut.typed_ast,
-      *argGenOut.typed_ast
-    );
-
-    auto genOut = GenOut {
-      std::move(constraints),
-      std::make_shared<Apply<TypedVar>>(applyNode)
-    };
-
-    return { genOut, returnType };
-  }
-};
-
-class TypeInference {
-public:
-  std::pair<GenOut, std::shared_ptr<Type>> infer(
-    const std::unordered_map<Var, Type>& env,
-    const std::shared_ptr<ASTNode<Var>>& ast
-  ) {
-
   }
 };
 

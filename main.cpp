@@ -5,28 +5,16 @@
 #include "type_inference.h"
 
 int main() {
-  std::cout << "Hello, World!" << std::endl;
+  auto intNode = std::make_shared<IntegerNode<Var>>("42");
+  auto varNode = std::make_shared<VariableNode<Var>>(0);
+  auto funcNode = std::make_shared<FunctionNode<Var>>(1, intNode);
+  auto applyNode = std::make_shared<ApplyNode<Var>>(funcNode, intNode);
 
-  auto intNode = Integer<Var>("42");
-  auto varNode = Variable<Var>(0);
-  auto funcNode = Function<Var>("square", intNode);
-  auto applyNode = Apply<Var>(funcNode, intNode);
   PrettyPrinterVisitor printer;
-  printer.visit(applyNode);
-  std::cout << std::endl;
+  printer.print(*applyNode);
 
-  Infer infer;
-  std::unordered_map<Var, Type> env;
-  infer.visit(varNode, env);
-
-  for(const auto& [key, value] : env) {
-    std::cout << key << " : " << &value << std::endl;
-  }
-
-
-  // env[]
-
-  std::cout << std::endl;
+  TypeInference inference;
+  inference.infer(*funcNode);
 
   return 0;
 }

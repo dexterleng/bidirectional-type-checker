@@ -1,5 +1,7 @@
 #ifndef AST_H
 #define AST_H
+#include <utility>
+
 #include "type.h"
 
 using Var = uint32_t;
@@ -7,11 +9,11 @@ using Var = uint32_t;
 class TypedVar {
 public:
   Var var;
-  Type type;
+  std::shared_ptr<Type> type;
 
-  TypedVar(Var var, Type type)
+  TypedVar(Var var, std::shared_ptr<Type> type)
     : var(var),
-      type(type) {
+      type(std::move(type)) {
   }
 };
 
@@ -32,11 +34,11 @@ public:
 };
 
 template <typename V>
-class Integer : public ASTNode<V> {
+class IntegerNode : public ASTNode<V> {
 public:
   std::string_view literal;
 
-  explicit Integer(std::string_view literal)
+  explicit IntegerNode(std::string_view literal)
   : ASTNode<V>(ASTNodeKind::Integer), literal(literal) {}
 
   int getValue() const {
@@ -45,39 +47,39 @@ public:
 };
 
 template <typename V>
-class Variable : public ASTNode<V> {
+class VariableNode : public ASTNode<V> {
 public:
   V var;
 
-  Variable(const V &var)
+  explicit VariableNode(const V &var)
     : ASTNode<V>(ASTNodeKind::Variable),
       var(var) {
   }
 };
 
 template <typename V>
-class Function : public ASTNode<V> {
+class FunctionNode : public ASTNode<V> {
 public:
   V arg;
   std::shared_ptr<ASTNode<V>> body;
 
-  Function(const V &arg, const std::shared_ptr<ASTNode<V>> &body)
+  FunctionNode(const V &arg, std::shared_ptr<ASTNode<V>> body)
     : ASTNode<V>(ASTNodeKind::Function),
       arg(arg),
-      body(body) {
+      body(std::move(body)) {
   }
 };
 
 template <typename V>
-class Apply : public ASTNode<V> {
+class ApplyNode : public ASTNode<V> {
 public:
-  ASTNode<V>& function;
-  ASTNode<V>& argument;
+  std::shared_ptr<ASTNode<V>> function;
+  std::shared_ptr<ASTNode<V>> argument;
 
-  Apply(ASTNode<V> &function, ASTNode<V> &argument)
+  ApplyNode(std::shared_ptr<ASTNode<V>> function, std::shared_ptr<ASTNode<V>> argument)
     : ASTNode<V>(ASTNodeKind::Apply),
-      function(function),
-      argument(argument) {
+      function(std::move(function)),
+      argument(std::move(argument)) {
   }
 };
 
