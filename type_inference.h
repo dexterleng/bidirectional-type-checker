@@ -84,8 +84,7 @@ private:
   }
 
   InferOut inferFunction(FunctionNode<Var>& node) {
-    TypeVar argumentTypeVar = freshTypeVar();
-    auto argumentType = std::make_shared<VariableType>(argumentTypeVar);
+    auto argumentType = std::make_shared<VariableType>(freshTypeVar());
 
     EnvState envState = extendEnv(node.arg, argumentType);
     auto bodyInferOut = infer(*node.body);
@@ -94,7 +93,7 @@ private:
     auto functionNode = FunctionNode<TypedVar>(
       TypedVar(
         node.arg,
-        std::make_shared<VariableType>(argumentTypeVar)
+        argumentType
       ),
       bodyInferOut.genOut->typedAst
     );
@@ -105,53 +104,37 @@ private:
         std::make_shared<FunctionNode<TypedVar>>(functionNode)
       ),
       std::make_unique<FunctionType>(
-        std::make_shared<VariableType>(argumentTypeVar),
+        argumentType,
         bodyInferOut.type
       )
     );
   }
 
   InferOut inferApply(ApplyNode<Var>& node) {
-    throw std::runtime_error("Unimplemented");
-  //   // Infer the type of the argument
-  //   auto argInferOut = infer(node.argument, env);
-  //   GenOut argGenOut = std::move(argInferOut.first);
-  //   auto argType = argInferOut.second;
-  //
-  //   // Generate a fresh return type variable
-  //   TypeVar returnTypeVar = freshTypeVar();
-  //   auto returnType = VariableType(returnTypeVar);
-  //
-  //   // Expected function type
-  //   auto functionType = FunctionType(
-  //     std::make_shared<Type>(argType),
-  //     std::make_shared<Type>(returnType)
-  //   );
-  //
-  //   // Check the function type
-  //   GenOut funGenOut = check(node.function, env, functionType);
-  //
-  //   // Collect constraints from both argument and function
-  //   std::vector<std::unique_ptr<TypeConstraint>> constraints;
-  //   for (auto& constraint : argGenOut.constraints) {
-  //     constraints.push_back(std::move(constraint));
-  //   }
-  //   for (auto& constraint : funGenOut.constraints) {
-  //     constraints.push_back(std::move(constraint));
-  //   }
-  //
-  //   // Construct the new Apply node with typed AST
-  //   auto applyNode = ApplyNode<TypedVar>(
-  //     *funGenOut.typedAst,
-  //     *argGenOut.typedAst
-  //   );
-  //
-  //   auto genOut = GenOut {
-  //     std::move(constraints),
-  //     std::make_shared<ApplyNode<TypedVar>>(applyNode)
-  //   };
-  //
-  //   return { genOut, returnType };
+    // construct a function type to check against the real function
+    auto argInferOut = infer(*node.argument);
+    auto argType = argInferOut.type;
+    auto returnType = std::make_shared<VariableType>(freshTypeVar());
+    auto functionType = std::make_shared<FunctionType>(argType, returnType);
+
+    auto functionGenOut = check(*node.function, functionType);
+
+    auto constraints = std::move(argInferOut.genOut->constraints);
+    auto functionConstraints = std::move(functionGenOut->constraints);
+    for (auto& constraint : functionConstraints) {
+      constraints.push_back(std::move(constraint));
+    }
+
+    return InferOut(
+      std::make_unique<GenOut>(
+        std::move(constraints),
+        std::make_shared<ApplyNode<TypedVar>>(
+          functionGenOut->typedAst,
+          argInferOut.genOut->typedAst
+        )
+      ),
+      returnType
+    );
   }
 
   std::unique_ptr<GenOut> check(
