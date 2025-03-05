@@ -204,7 +204,7 @@ private:
       state.oldValue = it->second;
     }
 
-    env[var] = type;
+    env[var] = std::move(type);
     return state;
   }
 
