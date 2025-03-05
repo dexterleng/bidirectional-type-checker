@@ -155,30 +155,29 @@ private:
   }
 
   std::unique_ptr<GenOut> check(
-    ASTNode<Var>& node,
-    std::shared_ptr<Type> type
+    ASTNode<Var>& _node,
+    std::shared_ptr<Type> _type
   ) {
-    if (node.kind == ASTNodeKind::Integer && type->kind == TypeKind::Integer) {
-      auto node = static_cast<IntegerNode<Var>&>(node);
-      auto type = static_cast<IntegerType&>(type);
+    if (_node.kind == ASTNodeKind::Integer && _type->kind == TypeKind::Integer) {
+      auto node = static_cast<IntegerNode<Var>&>(_node);
       return std::make_unique<GenOut>(
         std::vector<std::unique_ptr<TypeConstraint>>(),
         std::make_shared<IntegerNode<TypedVar>>(node.literal)
       );
     }
 
-    if (node.kind == ASTNodeKind::Function && type->kind == TypeKind::Function) {
-      auto node = static_cast<FunctionNode<Var>&>(node);
-      auto type = static_cast<FunctionType&>(type);
+    if (_node.kind == ASTNodeKind::Function && _type->kind == TypeKind::Function) {
+      auto node = static_cast<FunctionNode<Var>&>(_node);
+      auto type = static_pointer_cast<FunctionType>(_type);
 
-      auto envState = extendEnv(node.arg, type.from);
-      auto bodyCheckOut = check(*node.body, type.to);
+      auto envState = extendEnv(node.arg, type->from);
+      auto bodyCheckOut = check(*node.body, type->to);
       restoreEnv(envState);
 
       auto functionNode = FunctionNode<TypedVar>(
         TypedVar(
           node.arg,
-          type.from
+          type->from
         ),
         bodyCheckOut->typedAst
       );
@@ -189,9 +188,9 @@ private:
       );
     }
 
-    auto inferOut = infer(node);
+    auto inferOut = infer(_node);
     auto genOut = std::move(inferOut.genOut);
-    auto constraint = std::make_unique<EqualTypeConstraint>(type, inferOut.type);
+    auto constraint = std::make_unique<EqualTypeConstraint>(_type, inferOut.type);
     genOut->constraints.push_back(std::move(constraint));
     return genOut;
   }
