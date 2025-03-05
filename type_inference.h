@@ -58,7 +58,7 @@ public:
   }
 
 private:
-  InferOut inferInteger(IntegerNode<Var> node) {
+  InferOut inferInteger(IntegerNode<Var>& node) {
     return InferOut(
       std::make_unique<GenOut>(
         std::vector<std::unique_ptr<TypeConstraint>>(),
@@ -156,9 +156,9 @@ private:
 
   std::unique_ptr<GenOut> check(
     ASTNode<Var>& node,
-    Type& type
+    std::shared_ptr<Type> type
   ) {
-    if (node.kind == ASTNodeKind::Integer && type.kind == TypeKind::Integer) {
+    if (node.kind == ASTNodeKind::Integer && type->kind == TypeKind::Integer) {
       auto node = static_cast<IntegerNode<Var>&>(node);
       auto type = static_cast<IntegerType&>(type);
       return std::make_unique<GenOut>(
@@ -167,12 +167,12 @@ private:
       );
     }
 
-    if (node.kind == ASTNodeKind::Function && type.kind == TypeKind::Function) {
+    if (node.kind == ASTNodeKind::Function && type->kind == TypeKind::Function) {
       auto node = static_cast<FunctionNode<Var>&>(node);
       auto type = static_cast<FunctionType&>(type);
 
       auto envState = extendEnv(node.arg, type.from);
-      auto bodyCheckOut = check(*node.body, *type.to);
+      auto bodyCheckOut = check(*node.body, type.to);
       restoreEnv(envState);
 
       auto functionNode = FunctionNode<TypedVar>(
