@@ -1,7 +1,6 @@
 #ifndef TYPE_INFERENCE_H
 #define TYPE_INFERENCE_H
 
-#include <utility>
 #include <vector>
 #include "ast.h"
 #include "type_constraint.h"
@@ -9,11 +8,11 @@
 class GenOut {
 public:
   std::vector<std::unique_ptr<TypeConstraint>> constraints;
-  std::shared_ptr<ASTNode<TypedVar>> typed_ast;
+  std::shared_ptr<ASTNode<TypedVar>> typedAst;
 
-  GenOut(std::vector<std::unique_ptr<TypeConstraint>> constraints, std::shared_ptr<ASTNode<TypedVar>> typed_ast)
+  GenOut(std::vector<std::unique_ptr<TypeConstraint>> constraints, std::shared_ptr<ASTNode<TypedVar>> typedAst)
     : constraints(std::move(constraints)),
-      typed_ast(std::move(typed_ast)) {
+      typedAst(std::move(typedAst)) {
   }
 };
 
@@ -24,8 +23,15 @@ public:
 
   InferOut(std::unique_ptr<GenOut> gen_out, std::shared_ptr<Type> type)
     : genOut(std::move(gen_out)),
-      type(type) {
+      type(std::move(type)) {
   }
+};
+
+// Helper struct to store environment state for later restoration
+struct EnvState {
+  Var var;
+  bool existed;
+  std::shared_ptr<Type> oldValue;
 };
 
 class TypeInference {
@@ -78,33 +84,19 @@ private:
   }
 
   InferOut inferFunction(FunctionNode<Var>& node) {
-    // setup env to revert
-    std::optional<std::shared_ptr<Type>> oldValue;
-    auto it = env.find(node.arg);
-    if (it != env.end()) {
-      oldValue = std::make_optional(it->second);
-    }
-
-    // insert arg into env
     TypeVar argumentTypeVar = freshTypeVar();
-    env[node.arg] = std::make_shared<VariableType>(argumentTypeVar);
+    auto argumentType = std::make_shared<VariableType>(argumentTypeVar);
 
-    // infer the body
+    EnvState envState = extendEnv(node.arg, argumentType);
     auto bodyInferOut = infer(*node.body);
-
-    // revert changes to env
-    if (auto value = oldValue) {
-      env[node.arg] = *value;
-    } else {
-      env.erase(node.arg);
-    }
+    restoreEnv(envState);
 
     auto functionNode = FunctionNode<TypedVar>(
       TypedVar(
         node.arg,
         std::make_shared<VariableType>(argumentTypeVar)
       ),
-      bodyInferOut.genOut->typed_ast
+      bodyInferOut.genOut->typedAst
     );
 
     return InferOut(
@@ -150,8 +142,8 @@ private:
   //
   //   // Construct the new Apply node with typed AST
   //   auto applyNode = ApplyNode<TypedVar>(
-  //     *funGenOut.typed_ast,
-  //     *argGenOut.typed_ast
+  //     *funGenOut.typedAst,
+  //     *argGenOut.typedAst
   //   );
   //
   //   auto genOut = GenOut {
@@ -163,37 +155,66 @@ private:
   }
 
   GenOut check(
-  ASTNode<Var>& node,
-  std::unordered_map<Var, Type>& env
-) {
-    // switch (node.kind) {
-    //   case ASTNodeKind::Integer:
-    //     return inferInteger(static_cast<Integer<Var>&>(node), env);
-    //   case ASTNodeKind::Variable:
-    //     return inferVariable(static_cast<Variable<Var>&>(node), env);
-    //   case ASTNodeKind::Function:
-    //     return inferFunction(static_cast<Function<Var>&>(node), env);
-    //   case ASTNodeKind::Apply:
-    //     return inferApply(static_cast<Apply<Var>&>(node), env);
-    //   default:
-    //     throw std::runtime_error("Unknown AST node kind");
-    // }
+    ASTNode<Var>& node,
+    Type& type
+  ) {
+    if (node.kind == ASTNodeKind::Integer && type.kind == TypeKind::Integer) {
+      auto node = static_cast<IntegerNode<Var>&>(node);
+      auto type = static_cast<IntegerType&>(type);
+      return GenOut(
+        std::vector<std::unique_ptr<TypeConstraint>>(),
+        std::make_shared<IntegerNode<TypedVar>>(node.literal)
+      );
+    }
+
+    if (node.kind == ASTNodeKind::Function && type.kind == TypeKind::Function) {
+      auto node = static_cast<FunctionNode<Var>&>(node);
+      auto type = static_cast<FunctionType&>(type);
+
+      auto envState = extendEnv(node.arg, type.from);
+      auto bodyCheckOut = check(*node.body, *type.to);
+      restoreEnv(envState);
+
+      auto functionNode = FunctionNode<TypedVar>(
+        TypedVar(
+          node.arg,
+          type.from
+        ),
+        bodyCheckOut.typedAst
+      );
+
+      return GenOut(
+        std::move(bodyCheckOut.constraints),
+        std::make_shared<FunctionNode<TypedVar>>(functionNode)
+      );
+    }
   }
-
-
-
-//   fn check(
-//   &mut self,
-//   ast: Ast<Var>,
-//   ty: Type
-// ) -> GenOut {
-//     match (ast, ty) {
-//       // ...
-//     }
-//   }
 
   TypeVar freshTypeVar() {
     return 0;
+  }
+
+  // Helper method to save environment state and set a new value
+  EnvState extendEnv(const Var& var, std::shared_ptr<Type> type) {
+    EnvState state{var, false, nullptr};
+    auto it = env.find(var);
+
+    if (it != env.end()) {
+      state.existed = true;
+      state.oldValue = it->second;
+    }
+
+    env[var] = type;
+    return state;
+  }
+
+  // Helper method to restore previous environment state
+  void restoreEnv(const EnvState& state) {
+    if (state.existed) {
+      env[state.var] = state.oldValue;
+    } else {
+      env.erase(state.var);
+    }
   }
 };
 

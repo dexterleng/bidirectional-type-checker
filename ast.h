@@ -39,7 +39,7 @@ public:
   std::string_view literal;
 
   explicit IntegerNode(std::string_view literal)
-  : ASTNode<V>(ASTNodeKind::Integer), literal(literal) {}
+    : ASTNode<V>(ASTNodeKind::Integer), literal(literal) {}
 
   int getValue() const {
     return std::stoi(std::string(literal));
