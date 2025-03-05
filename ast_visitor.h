@@ -39,7 +39,7 @@ public:
   }
 
   void visitFunction(FunctionNode<Var>& node) {
-    std::cout << "(function " << node.arg << " ";
+    std::cout << "(Function " << node.arg << " ";
     visit(*node.body);
     std::cout << ")";
   }

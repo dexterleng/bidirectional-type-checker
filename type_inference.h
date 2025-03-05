@@ -178,8 +178,9 @@ private:
     return genOut;
   }
 
+  TypeVar typeVar = 0;
   TypeVar freshTypeVar() {
-    return 0;
+    return typeVar++;
   }
 
   // Helper method to save environment state and set a new value
