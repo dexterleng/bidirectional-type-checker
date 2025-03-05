@@ -9,18 +9,18 @@ public:
   virtual void print() const = 0;
 };
 
-class TypeEqual : public TypeConstraint {
+class EqualTypeConstraint : public TypeConstraint {
 public:
-  std::unique_ptr<Type> lhs;
-  std::unique_ptr<Type> rhs;
+  std::shared_ptr<Type> lhs;
+  std::shared_ptr<Type> rhs;
 
-  TypeEqual(std::unique_ptr<Type> lhs, std::unique_ptr<Type> rhs)
+  EqualTypeConstraint(std::shared_ptr<Type> lhs, std::shared_ptr<Type> rhs)
       : lhs(std::move(lhs)), rhs(std::move(rhs)) {}
 
   void print() const override {
     std::cout << "TypeEqual Constraint:\n";
-    // lhs->print();
-    // rhs->print();
+    lhs->print();
+    rhs->print();
   }
 };
 

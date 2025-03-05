@@ -58,7 +58,7 @@ public:
   }
 
 private:
-  InferOut inferInteger(IntegerNode<Var>& node) {
+  InferOut inferInteger(IntegerNode<Var> node) {
     return InferOut(
       std::make_unique<GenOut>(
         std::vector<std::unique_ptr<TypeConstraint>>(),
@@ -154,14 +154,14 @@ private:
   //   return { genOut, returnType };
   }
 
-  GenOut check(
+  std::unique_ptr<GenOut> check(
     ASTNode<Var>& node,
     Type& type
   ) {
     if (node.kind == ASTNodeKind::Integer && type.kind == TypeKind::Integer) {
       auto node = static_cast<IntegerNode<Var>&>(node);
       auto type = static_cast<IntegerType&>(type);
-      return GenOut(
+      return std::make_unique<GenOut>(
         std::vector<std::unique_ptr<TypeConstraint>>(),
         std::make_shared<IntegerNode<TypedVar>>(node.literal)
       );
@@ -180,14 +180,20 @@ private:
           node.arg,
           type.from
         ),
-        bodyCheckOut.typedAst
+        bodyCheckOut->typedAst
       );
 
-      return GenOut(
-        std::move(bodyCheckOut.constraints),
+      return std::make_unique<GenOut>(
+        std::move(bodyCheckOut->constraints),
         std::make_shared<FunctionNode<TypedVar>>(functionNode)
       );
     }
+
+    auto inferOut = infer(node);
+    auto genOut = std::move(inferOut.genOut);
+    auto constraint = std::make_unique<EqualTypeConstraint>(type, inferOut.type);
+    genOut->constraints.push_back(std::move(constraint));
+    return genOut;
   }
 
   TypeVar freshTypeVar() {
