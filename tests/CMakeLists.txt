@@ -1,5 +1,3 @@
-
-
 include(FetchContent)
 FetchContent_Declare(
         googletest
@@ -15,5 +13,5 @@ add_executable(tests
         equality.cpp)
 target_include_directories(
         tests
-        PRIVATE ${CMAKE_SOURCE_DIR}/)
+        PRIVATE ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(tests gtest_main core)
