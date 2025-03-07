@@ -42,7 +42,7 @@ public:
 
   TypeInference() = default;
 
-  bool solve(
+  void solve(
     ASTNode<Var>& node
   ) {
     auto inferOut = infer(node);
@@ -50,14 +50,15 @@ public:
 
     for (auto& _constraint : constraints) {
       switch (_constraint->kind) {
-        case TypeConstraintKind::Equal:
+        case TypeConstraintKind::Equal: {
           auto constraint = static_cast<EqualTypeConstraint*>(_constraint.get());
-          return solveEqualTypeConstraint(*constraint);
+          solveEqualTypeConstraint(*constraint);
+          break;
+        }
         default:
           throw std::runtime_error("Unknown TypeConstraintKind");
       }
     }
-    return true;
   }
 
 //   fn unify_ty_ty(
@@ -101,6 +102,8 @@ public:
       unionFind.join(lhsVariableType->typeVar, rhsVariableType->typeVar);
       return;
     }
+
+    throw std::runtime_error("type not equal");
 
     // (Type::Var(v), ty) | (ty, Type::Var(v)) => {
     //   ty.occurs_check(v)

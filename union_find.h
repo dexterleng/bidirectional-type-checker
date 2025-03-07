@@ -77,7 +77,7 @@ public:
 
     auto typeA = *typeAOpt;
     auto typeB = *typeBOpt;
-    if (*typeA == *typeB) {
+    if (typeA == typeB || *typeA == *typeB) {
 
     }
   }
