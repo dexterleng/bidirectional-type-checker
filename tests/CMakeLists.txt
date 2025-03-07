@@ -10,7 +10,7 @@ FetchContent_MakeAvailable(googletest)
 
 add_executable(tests
         gtest.cpp
-        equality.cpp)
+        type_equality_test.cpp)
 target_include_directories(
         tests
         PRIVATE ${CMAKE_SOURCE_DIR}/src)

@@ -5,7 +5,8 @@ add_library(core
         type_inference.h
         type_constraint.h
         ast_visitor.h
-        union_find.h)
+        union_find.h
+        type.cpp)
 
 add_executable(bidirectional_type_checker main.cpp)
 target_link_libraries(bidirectional_type_checker core)

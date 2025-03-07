@@ -19,7 +19,11 @@ public:
 
   virtual void print() const = 0;
 
-  bool operator==(const Type&) const = default;
+  virtual bool operator==(const Type &other) const {
+    return kind == other.kind;
+  }
+
+  bool operator!=(const Type &other) const = default;
 };
 
 class VariableType : public Type {
@@ -31,6 +35,14 @@ public:
 
   void print() const override {
     std::cout << "VariableType: " << typeVar << std::endl;
+  }
+
+  bool operator==(const Type &other) const override {
+    if (kind != other.kind) {
+      return false;
+    }
+    auto otherType = static_cast<const VariableType&>(other);
+    return typeVar == otherType.typeVar;
   }
 };
 
@@ -58,6 +70,16 @@ public:
     std::cout << "FunctionType: from -> to" << std::endl;
     from->print();
     to->print();
+  }
+
+  bool operator==(const Type &other) const override {
+    if (other.kind != TypeKind::Function) {
+      return false;
+    }
+    auto otherType = static_cast<const FunctionType&>(other);
+    auto fromEqual = *from == *(otherType.from);
+    auto toEqual = *to == *(otherType.to);
+    return fromEqual && toEqual;
   }
 };
 
