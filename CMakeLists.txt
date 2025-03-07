@@ -8,4 +8,5 @@ add_executable(bidirectional_type_checker main.cpp
         type.h
         type_inference.h
         type_constraint.h
-        ast_visitor.h)
+        ast_visitor.h
+        union_find.h)

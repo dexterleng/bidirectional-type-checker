@@ -18,6 +18,8 @@ public:
   virtual ~Type() = default;
 
   virtual void print() const = 0;
+
+  bool operator==(const Type&) const = default;
 };
 
 class VariableType : public Type {

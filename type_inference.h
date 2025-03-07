@@ -4,6 +4,7 @@
 #include <vector>
 #include "ast.h"
 #include "type_constraint.h"
+#include "union_find.h"
 
 class GenOut {
 public:
@@ -37,8 +38,110 @@ struct EnvState {
 class TypeInference {
 public:
   std::unordered_map<Var, std::shared_ptr<Type>> env;
+  UnionFind unionFind;
 
   TypeInference() = default;
+
+  bool solve(
+    ASTNode<Var>& node
+  ) {
+    auto inferOut = infer(node);
+    auto constraints = std::move(inferOut.genOut->constraints);
+
+    for (auto& _constraint : constraints) {
+      switch (_constraint->kind) {
+        case TypeConstraintKind::Equal:
+          auto constraint = static_cast<EqualTypeConstraint*>(_constraint.get());
+          return solveEqualTypeConstraint(*constraint);
+        default:
+          throw std::runtime_error("Unknown TypeConstraintKind");
+      }
+    }
+    return true;
+  }
+
+//   fn unify_ty_ty(
+//   &mut self,
+//   unnorm_left: Type,
+//   unnorm_right: Type
+// ) -> Result<(), TypeError> {
+//     let left = self.normalize_ty(unnorm_left);
+//     let right = self.normalize_ty(unnorm_right);
+//     match (left, right) {
+//       // ...
+//     }
+//   }
+  // (Type::Int, Type::Int) => Ok(()),
+  // (Type::Fun(a_arg, a_ret), Type::Fun(b_arg, b_ret)) => {
+  //   self.unify_ty_ty(*a_arg, *b_arg)?;
+  //   self.unify_ty_ty(*a_ret, *b_ret)
+  // }
+  void solveEqualTypeConstraint(EqualTypeConstraint& constraint) {
+    auto lhsType = normalizeType(constraint.lhs);
+    auto rhsType = normalizeType(constraint.rhs);
+    _solveEqualTypeConstraint(lhsType, rhsType);
+  }
+
+  void _solveEqualTypeConstraint(std::shared_ptr<Type> lhsType, std::shared_ptr<Type> rhsType) {
+    if (lhsType->kind == TypeKind::Integer && rhsType->kind == TypeKind::Integer) {
+      return;
+    }
+
+    if (lhsType->kind == TypeKind::Function && rhsType->kind == TypeKind::Function) {
+      auto lhsFunctionType = static_pointer_cast<FunctionType>(lhsType);
+      auto rhsFunctionType = static_pointer_cast<FunctionType>(rhsType);
+      _solveEqualTypeConstraint(lhsFunctionType->from, rhsFunctionType->from);
+      _solveEqualTypeConstraint(lhsFunctionType->to, rhsFunctionType->to);
+      return;
+    }
+
+    if (lhsType->kind == TypeKind::Variable && rhsType->kind == TypeKind::Variable) {
+      auto lhsVariableType = static_pointer_cast<VariableType>(lhsType);
+      auto rhsVariableType = static_pointer_cast<VariableType>(rhsType);
+      unionFind.join(lhsVariableType->typeVar, rhsVariableType->typeVar);
+      return;
+    }
+
+    // (Type::Var(v), ty) | (ty, Type::Var(v)) => {
+    //   ty.occurs_check(v)
+    //     .map_err(|ty| TypeError::InfiniteType(v, ty))?;
+    //   self
+    //     .unification_table
+    //     .unify_var_value(v, Some(ty))
+    //     .map_err(|(l, r)| TypeError::TypeNotEqual(l, r))
+    // }
+    //
+    // (left, right) => Err(TypeError::TypeNotEqual(left, right)),
+  }
+
+  std::shared_ptr<Type> normalizeType(std::shared_ptr<Type> _type) {
+    switch (_type->kind) {
+      case TypeKind::Integer:
+        return _type;
+      case TypeKind::Variable: {
+        auto type = static_pointer_cast<VariableType>(_type);
+        auto normalizedType = unionFind.getType(type->typeVar);
+        if (normalizedType.has_value()) {
+          return normalizeType(*normalizedType);
+        } else {
+          auto typeVar = unionFind.find(type->typeVar);
+          return std::make_shared<VariableType>(typeVar);
+        }
+      }
+      case TypeKind::Function: {
+        auto type = static_pointer_cast<FunctionType>(_type);
+        auto fromType = normalizeType(type->from);
+        auto toType = normalizeType(type->to);
+        return std::make_shared<FunctionType>(fromType, toType);
+      }
+      default:
+        throw std::runtime_error("Unknown TypeKind");
+    }
+  }
+
+  TypeVar freshTypeVar() {
+    return unionFind.insert(std::nullopt);
+  }
 
   InferOut infer(
     ASTNode<Var>& node
@@ -53,7 +156,7 @@ public:
       case ASTNodeKind::Apply:
         return inferApply(static_cast<ApplyNode<Var>&>(node));
       default:
-        throw std::runtime_error("Unknown AST node kind");
+        throw std::runtime_error("Unknown ASTNodeKind");
     }
   }
 
@@ -176,11 +279,6 @@ private:
     auto constraint = std::make_unique<EqualTypeConstraint>(_type, inferOut.type);
     genOut->constraints.push_back(std::move(constraint));
     return genOut;
-  }
-
-  TypeVar typeVar = 0;
-  TypeVar freshTypeVar() {
-    return typeVar++;
   }
 
   // Helper method to save environment state and set a new value
