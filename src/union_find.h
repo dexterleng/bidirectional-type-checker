@@ -1,5 +1,6 @@
 #ifndef UNION_FIND_H
 #define UNION_FIND_H
+#include <utility>
 #include <vector>
 
 #include "type.h"
@@ -39,26 +40,6 @@ public:
     }
     auto typeAOpt = getType(rootA);
     auto typeBOpt = getType(rootB);
-    // if both are null, pick any to be the root, type is null
-    // if typeA is null, typeB is not, rootB is the root, typeB is the value. vice versa.
-    // if both are IntegerType, pick any to be the root, type is IntegerType
-    // if both are FunctionType, pick any to be the root, type is IntegerType
-    // if both are VariableType, pick any to be the root,
-
-    // let combined = V::unify_values(&self.value(root_a).value, &self.value(root_b).value)?;
-    //
-    // Ok(self.unify_roots(root_a, root_b, combined))
-
-  //   fn unify_values(a: &Option<V>, b: &Option<V>) -> Result<Self, V::Error> {
-  //     match (a, b) {
-  //       (&None, &None) => Ok(None),
-  //       (&Some(ref v), &None) | (&None, &Some(ref v)) => Ok(Some(v.clone())),
-  //       (&Some(ref a), &Some(ref b)) => match V::unify_values(a, b) {
-  //         Ok(v) => Ok(Some(v)),
-  //         Err(err) => Err(err),
-  //     },
-  // }
-  //   }
 
     if (!typeAOpt.has_value() && !typeBOpt.has_value()) {
       joinRoots(rootA, rootB, std::nullopt);
@@ -77,16 +58,19 @@ public:
 
     auto typeA = *typeAOpt;
     auto typeB = *typeBOpt;
-    if (typeA == typeB || *typeA == *typeB) {
-
+    if (*typeA == *typeB) {
+      joinRoots(rootA, rootB, typeA);
+      return;
     }
+
+    throw std::runtime_error("Failed to join.");
   }
 
 private:
-  void joinRoots(TypeVar rootA, TypeVar rootB, std::optional<std::shared_ptr<Type>> newType) {
+  void joinRoots(const TypeVar rootA, const TypeVar rootB, std::optional<std::shared_ptr<Type>> newType) {
     // since there's no ranking, we arbitrarily pick rootA as the new root
     parents[rootB] = rootA;
-    types[rootA] = newType;
+    types[rootA] = std::move(newType);
   }
 };
 
