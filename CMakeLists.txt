@@ -3,8 +3,8 @@ project(bidirectional_type_checker)
 
 set(CMAKE_CXX_STANDARD 20)
 
-add_library(bidirectional_type_checker_lib
-        lib.cpp
+add_library(core
+        core.cpp
         ast.h
         type.h
         type_inference.h
@@ -13,6 +13,6 @@ add_library(bidirectional_type_checker_lib
         union_find.h)
 
 add_executable(bidirectional_type_checker main.cpp)
-target_link_libraries(bidirectional_type_checker bidirectional_type_checker_lib)
+target_link_libraries(bidirectional_type_checker core)
 
 add_subdirectory(tests)

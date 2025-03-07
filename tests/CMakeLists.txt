@@ -1,3 +1,5 @@
+
+
 include(FetchContent)
 FetchContent_Declare(
         googletest
@@ -11,5 +13,7 @@ FetchContent_MakeAvailable(googletest)
 add_executable(tests
         gtest.cpp
         equality.cpp)
-target_link_libraries(tests gtest_main)
-add_test(NAME tests_test COMMAND tests)
+target_include_directories(
+        tests
+        PRIVATE ${CMAKE_SOURCE_DIR}/)
+target_link_libraries(tests gtest_main core)

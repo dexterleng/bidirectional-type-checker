@@ -1,7 +1,10 @@
 #include <gtest/gtest.h>
+#include "ast.h"
 
 // A sample function to test (replace with real implementation)
 int add(int a, int b) {
+  auto x = "";
+  auto y = IntegerNode<TypedVar>(x);
   return a + b;
 }
 
