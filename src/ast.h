@@ -1,10 +1,17 @@
 #ifndef AST_H
 #define AST_H
-#include <utility>
 
 #include "type.h"
 
-using Var = uint32_t;
+using VariableName = uint32_t;
+
+struct Var {
+  VariableName name;
+  std::optional<std::shared_ptr<Type>> type;
+
+  explicit Var(VariableName name)
+    : name(name), type(std::nullopt) {}
+};
 
 enum class ASTNodeKind {
   Integer,

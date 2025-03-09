@@ -15,7 +15,7 @@ struct EnvState {
 
 class TypeInference {
 public:
-  std::unordered_map<Var, std::shared_ptr<Type>> env;
+  std::unordered_map<VariableName, std::shared_ptr<Type>> env;
   std::vector<std::unique_ptr<TypeConstraint>> constraints;
   UnionFind unionFind;
 
@@ -149,11 +149,14 @@ private:
   }
 
   std::shared_ptr<Type> inferVariable(VariableNode& node) {
-    return env[node.var];
+    auto type = env[node.var.name];
+    node.var.type = type;
+    return type;
   }
 
   std::shared_ptr<Type> inferFunction(FunctionNode& node) {
     auto argumentType = std::make_shared<VariableType>(freshTypeVar());
+    node.arg.type = argumentType;
 
     EnvState envState = extendEnv(node.arg, argumentType);
     auto bodyType = infer(*node.body);
@@ -190,6 +193,7 @@ private:
       check(*functionNode.body, functionType->to);
       restoreEnv(envState);
 
+      functionNode.arg.type = functionType->from;
       return;
     }
 
@@ -201,23 +205,23 @@ private:
   // Helper method to save environment state and set a new value
   EnvState extendEnv(const Var& var, std::shared_ptr<Type> type) {
     EnvState state{var, false, nullptr};
-    auto it = env.find(var);
+    auto it = env.find(var.name);
 
     if (it != env.end()) {
       state.existed = true;
       state.oldValue = it->second;
     }
 
-    env[var] = std::move(type);
+    env[var.name] = std::move(type);
     return state;
   }
 
   // Helper method to restore previous environment state
   void restoreEnv(const EnvState& state) {
     if (state.existed) {
-      env[state.var] = state.oldValue;
+      env[state.var.name] = state.oldValue;
     } else {
-      env.erase(state.var);
+      env.erase(state.var.name);
     }
   }
 };

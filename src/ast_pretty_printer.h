@@ -26,7 +26,7 @@ public:
 
   void visitVariable(VariableNode& node) {
     printIndent();
-    std::cout << "Variable(" << node.var << ")" << std::endl;
+    std::cout << "Variable(" << node.var.name << ")" << std::endl;
   }
 
   void visitFunction(FunctionNode& node) {
@@ -39,7 +39,7 @@ public:
     std::cout << "Parameters:" << std::endl;
     indent++;
     printIndent();
-    std::cout << node.arg << std::endl;
+    std::cout << node.arg.name << std::endl;
     indent--;
 
     printIndent();
