@@ -1,6 +1,7 @@
 #ifndef TYPE_INFERENCE_H
 #define TYPE_INFERENCE_H
 
+#include <set>
 #include <vector>
 #include "ast.h"
 #include "type_constraint.h"
@@ -13,19 +14,110 @@ struct EnvState {
   std::shared_ptr<Type> oldValue;
 };
 
+struct TypeScheme {
+  std::set<TypeVar> unbound;
+  std::shared_ptr<Type> ty;
+
+  bool operator==(const TypeScheme& other) const {
+    return unbound == other.unbound && *ty == *(other.ty);
+  }
+};
+
 class TypeInference {
 public:
   std::unordered_map<VariableName, std::shared_ptr<Type>> env;
   std::vector<std::unique_ptr<TypeConstraint>> constraints;
+  std::set<TypeVar> unbounded;
   UnionFind unionFind;
 
   TypeInference() = default;
 
-  void solve(
+  void perform(ASTNode& node) {
+    auto type = infer(node);
+    solveConstraints(node);
+    substitute(type);
+    substituteAst(node);
+  }
+
+private:
+  std::shared_ptr<Type> substitute(std::shared_ptr<Type> ty) {
+    switch (ty->kind) {
+      case TypeKind::Integer: {
+        // For integer types, return empty set of unbound variables and the original type
+        return ty;
+      }
+      case TypeKind::Variable: {
+        // For variable types, check if it's bound to a concrete type
+        auto varType = static_pointer_cast<VariableType>(ty);
+        auto root = unionFind.find(varType->typeVar);
+        auto resolvedType = unionFind.getType(root);
+
+        if (resolvedType.has_value()) {
+          // If bound, recursively substitute
+          return substitute(*resolvedType);
+        } else {
+          // If unbound, add to set of unbound variables
+          unbounded.insert(root);
+          return std::make_shared<VariableType>(root);
+        }
+      }
+      case TypeKind::Function: {
+        // For function types, recursively substitute in argument and return types
+        auto funType = static_pointer_cast<FunctionType>(ty);
+        auto argType = substitute(funType->from);
+        auto retType = substitute(funType->to);
+        return std::make_shared<FunctionType>(argType, retType);
+      }
+      default:
+        throw std::runtime_error("Unhandled TypeKind");
+    }
+  }
+
+  void substituteAst(ASTNode& node) {
+    switch (node.kind) {
+      case ASTNodeKind::Integer: {
+        // For integer nodes, no substitution needed.
+        auto& intNode = static_cast<IntegerNode&>(node);
+        break;
+      }
+      case ASTNodeKind::Variable: {
+        // For variable nodes, substitute the type.
+        auto& varNode = static_cast<VariableNode&>(node);
+        auto substitutedType = substitute(varNode.var.type.value());
+        varNode.var.type = substitutedType;
+        break;
+      }
+      case ASTNodeKind::Function: {
+        // For function nodes, substitute the argument type and then the body
+        auto& funNode = static_cast<FunctionNode&>(node);
+        // Substitute the argument type
+        auto argType = substitute(funNode.arg.type.value());
+        // Update function node with updated argument type
+        funNode.arg.type = argType;
+        // Recursively substitute in the body
+        substituteAst(*funNode.body);
+        break;
+      }
+      case ASTNodeKind::Apply: {
+        // For apply nodes, substitute in both the function and argument parts
+        auto& applyNode = static_cast<ApplyNode&>(node);
+        // First substitute in the function
+        substituteAst(*applyNode.function);
+        // Then substitute in the argument
+        substituteAst(*applyNode.argument);
+        break;
+      }
+      default:
+        throw std::runtime_error("Unknown ASTNodeKind in substituteAst");
+    }
+  }
+
+  /*
+   * Solve Constraints
+   */
+  void solveConstraints(
     ASTNode& node
   ) {
-    auto type = infer(node);
-
     for (auto& _constraint : this->constraints) {
       switch (_constraint->kind) {
         case TypeConstraintKind::Equal: {
@@ -122,11 +214,9 @@ public:
     }
   }
 
-  TypeVar freshTypeVar() {
-    return unionFind.insert(std::nullopt);
-  }
-
-private:
+  /*
+   * Infer
+   */
   std::shared_ptr<Type> infer(
     ASTNode& node
   ) {
@@ -177,6 +267,13 @@ private:
     return returnType;
   }
 
+  TypeVar freshTypeVar() {
+    return unionFind.insert(std::nullopt);
+  }
+
+  /*
+   * Check
+   */
   void check(
     ASTNode& node,
     const std::shared_ptr<Type>& type
@@ -202,6 +299,9 @@ private:
     this->constraints.push_back(std::move(constraint));
   }
 
+  /*
+   * Env
+   */
   // Helper method to save environment state and set a new value
   EnvState extendEnv(const Var& var, std::shared_ptr<Type> type) {
     EnvState state{var, false, nullptr};
