@@ -7,6 +7,7 @@ add_library(core
         ast_visitor.h
         union_find.h
         error.h
+        ast_pretty_printer.h
 )
 
 add_executable(bidirectional_type_checker main.cpp)

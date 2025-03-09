@@ -21,36 +21,4 @@ public:
   }
 };
 
-class PrettyPrinterVisitor : public ASTVisitor<PrettyPrinterVisitor> {
-public:
-  using ASTVisitor::visit; // Ensure we don't hide the base class `visit`
-
-  void print(ASTNode& node) {
-    ASTVisitor::visit(node);
-    std::cout << std::endl;
-  }
-
-  void visitInteger(IntegerNode& node) {
-    std::cout << node.getValue();
-  }
-
-  void visitVariable(VariableNode& node) {
-    std::cout << "Variable"; // Modify as needed to print variable names
-  }
-
-  void visitFunction(FunctionNode& node) {
-    std::cout << "(Function " << node.arg << " ";
-    visit(*node.body);
-    std::cout << ")";
-  }
-
-  void visitApply(ApplyNode& node) {
-    std::cout << "(";
-    visit(*node.function);
-    std::cout << " ";
-    visit(*node.argument);
-    std::cout << ")";
-  }
-};
-
 #endif //AST_VISITOR_H

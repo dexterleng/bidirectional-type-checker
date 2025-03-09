@@ -126,7 +126,6 @@ public:
     return unionFind.insert(std::nullopt);
   }
 
-
 private:
   std::shared_ptr<Type> infer(
     ASTNode& node
