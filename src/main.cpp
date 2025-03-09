@@ -19,7 +19,7 @@ int main() {
 
   TypeInference inference;
   auto res = inference.infer(*applyNode);
-  auto typedAst = res.genOut->typedAst;
+  auto typedAst = res.typedAst;
 
   return 0;
 }

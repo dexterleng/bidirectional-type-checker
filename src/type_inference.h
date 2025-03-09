@@ -6,22 +6,13 @@
 #include "type_constraint.h"
 #include "union_find.h"
 
-class GenOut {
-public:
-  std::shared_ptr<ASTNode<TypedVar>> typedAst;
-
-  GenOut(std::shared_ptr<ASTNode<TypedVar>> typedAst)
-    : typedAst(std::move(typedAst)) {
-  }
-};
-
 class InferOut {
 public:
-  std::unique_ptr<GenOut> genOut;
+  std::shared_ptr<ASTNode<TypedVar>> typedAst;
   std::shared_ptr<Type> type;
 
-  InferOut(std::unique_ptr<GenOut> gen_out, std::shared_ptr<Type> type)
-    : genOut(std::move(gen_out)),
+  InferOut(std::shared_ptr<ASTNode<TypedVar>> typedAst, std::shared_ptr<Type> type)
+    : typedAst(std::move(typedAst)),
       type(std::move(type)) {
   }
 };
@@ -166,22 +157,18 @@ public:
 private:
   InferOut inferInteger(IntegerNode<Var>& node) {
     return InferOut(
-      std::make_unique<GenOut>(
-        std::make_shared<IntegerNode<TypedVar>>(node.literal)
-      ),
+      std::make_shared<IntegerNode<TypedVar>>(node.literal),
       std::make_shared<IntegerType>()
     );
   }
 
   InferOut inferVariable(VariableNode<Var>& node) {
     return InferOut(
-      std::make_unique<GenOut>(
-        std::make_shared<VariableNode<TypedVar>>(
-          TypedVar {
-            node.var,
-            env[node.var]
-          }
-        )
+      std::make_shared<VariableNode<TypedVar>>(
+        TypedVar {
+          node.var,
+          env[node.var]
+        }
       ),
       env[node.var]
     );
@@ -199,13 +186,11 @@ private:
         node.arg,
         argumentType
       ),
-      bodyInferOut.genOut->typedAst
+      bodyInferOut.typedAst
     );
 
     return InferOut(
-      std::make_unique<GenOut>(
-        std::make_shared<FunctionNode<TypedVar>>(functionNode)
-      ),
+      std::make_shared<FunctionNode<TypedVar>>(functionNode),
       std::make_unique<FunctionType>(
         argumentType,
         bodyInferOut.type
@@ -220,28 +205,24 @@ private:
     auto returnType = std::make_shared<VariableType>(freshTypeVar());
     auto functionType = std::make_shared<FunctionType>(argType, returnType);
 
-    auto functionGenOut = check(*node.function, functionType);
+    auto functionTypedAst = check(*node.function, functionType);
 
     return InferOut(
-      std::make_unique<GenOut>(
-        std::make_shared<ApplyNode<TypedVar>>(
-          functionGenOut->typedAst,
-          argInferOut.genOut->typedAst
-        )
+      std::make_shared<ApplyNode<TypedVar>>(
+        functionTypedAst,
+        argInferOut.typedAst
       ),
       returnType
     );
   }
 
-  std::unique_ptr<GenOut> check(
+  std::shared_ptr<ASTNode<TypedVar>> check(
     ASTNode<Var>& _node,
     std::shared_ptr<Type> _type
   ) {
     if (_node.kind == ASTNodeKind::Integer && _type->kind == TypeKind::Integer) {
       auto node = static_cast<IntegerNode<Var>&>(_node);
-      return std::make_unique<GenOut>(
-        std::make_shared<IntegerNode<TypedVar>>(node.literal)
-      );
+      return std::make_shared<IntegerNode<TypedVar>>(node.literal);
     }
 
     if (_node.kind == ASTNodeKind::Function && _type->kind == TypeKind::Function) {
@@ -249,7 +230,7 @@ private:
       auto type = static_pointer_cast<FunctionType>(_type);
 
       auto envState = extendEnv(node.arg, type->from);
-      auto bodyCheckOut = check(*node.body, type->to);
+      auto bodyTypedAst = check(*node.body, type->to);
       restoreEnv(envState);
 
       auto functionNode = FunctionNode<TypedVar>(
@@ -257,19 +238,16 @@ private:
           node.arg,
           type->from
         ),
-        bodyCheckOut->typedAst
+        bodyTypedAst
       );
 
-      return std::make_unique<GenOut>(
-        std::make_shared<FunctionNode<TypedVar>>(functionNode)
-      );
+      return std::make_shared<FunctionNode<TypedVar>>(functionNode);
     }
 
     auto inferOut = infer(_node);
-    auto genOut = std::move(inferOut.genOut);
     auto constraint = std::make_unique<EqualTypeConstraint>(_type, inferOut.type);
     this->constraints.push_back(std::move(constraint));
-    return genOut;
+    return inferOut.typedAst;
   }
 
   // Helper method to save environment state and set a new value
