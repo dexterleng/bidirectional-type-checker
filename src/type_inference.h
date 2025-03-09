@@ -6,17 +6,6 @@
 #include "type_constraint.h"
 #include "union_find.h"
 
-class InferOut {
-public:
-  std::shared_ptr<ASTNode<TypedVar>> typedAst;
-  std::shared_ptr<Type> type;
-
-  InferOut(std::shared_ptr<ASTNode<TypedVar>> typedAst, std::shared_ptr<Type> type)
-    : typedAst(std::move(typedAst)),
-      type(std::move(type)) {
-  }
-};
-
 // Helper struct to store environment state for later restoration
 struct EnvState {
   Var var;
@@ -33,9 +22,9 @@ public:
   TypeInference() = default;
 
   void solve(
-    ASTNode<Var>& node
+    ASTNode& node
   ) {
-    auto inferOut = infer(node);
+    auto type = infer(node);
 
     for (auto& _constraint : this->constraints) {
       switch (_constraint->kind) {
@@ -137,117 +126,77 @@ public:
     return unionFind.insert(std::nullopt);
   }
 
-  InferOut infer(
-    ASTNode<Var>& node
+
+private:
+  std::shared_ptr<Type> infer(
+    ASTNode& node
   ) {
     switch (node.kind) {
       case ASTNodeKind::Integer:
-        return inferInteger(static_cast<IntegerNode<Var>&>(node));
+        return inferInteger(static_cast<IntegerNode&>(node));
       case ASTNodeKind::Variable:
-        return inferVariable(static_cast<VariableNode<Var>&>(node));
+        return inferVariable(static_cast<VariableNode&>(node));
       case ASTNodeKind::Function:
-        return inferFunction(static_cast<FunctionNode<Var>&>(node));
+        return inferFunction(static_cast<FunctionNode&>(node));
       case ASTNodeKind::Apply:
-        return inferApply(static_cast<ApplyNode<Var>&>(node));
+        return inferApply(static_cast<ApplyNode&>(node));
       default:
         throw std::runtime_error("Unknown ASTNodeKind");
     }
   }
 
-private:
-  InferOut inferInteger(IntegerNode<Var>& node) {
-    return InferOut(
-      std::make_shared<IntegerNode<TypedVar>>(node.literal),
-      std::make_shared<IntegerType>()
-    );
+  std::shared_ptr<Type> inferInteger(IntegerNode& node) {
+    return std::make_shared<IntegerType>();
   }
 
-  InferOut inferVariable(VariableNode<Var>& node) {
-    return InferOut(
-      std::make_shared<VariableNode<TypedVar>>(
-        TypedVar {
-          node.var,
-          env[node.var]
-        }
-      ),
-      env[node.var]
-    );
+  std::shared_ptr<Type> inferVariable(VariableNode& node) {
+    return env[node.var];
   }
 
-  InferOut inferFunction(FunctionNode<Var>& node) {
+  std::shared_ptr<Type> inferFunction(FunctionNode& node) {
     auto argumentType = std::make_shared<VariableType>(freshTypeVar());
 
     EnvState envState = extendEnv(node.arg, argumentType);
-    auto bodyInferOut = infer(*node.body);
+    auto bodyType = infer(*node.body);
     restoreEnv(envState);
 
-    auto functionNode = FunctionNode<TypedVar>(
-      TypedVar(
-        node.arg,
-        argumentType
-      ),
-      bodyInferOut.typedAst
-    );
-
-    return InferOut(
-      std::make_shared<FunctionNode<TypedVar>>(functionNode),
-      std::make_unique<FunctionType>(
-        argumentType,
-        bodyInferOut.type
-      )
+    return std::make_unique<FunctionType>(
+      argumentType,
+      bodyType
     );
   }
 
-  InferOut inferApply(ApplyNode<Var>& node) {
+  std::shared_ptr<Type> inferApply(ApplyNode& node) {
     // construct a function type to check against the real function
-    auto argInferOut = infer(*node.argument);
-    auto argType = argInferOut.type;
+    auto argType = infer(*node.argument);
     auto returnType = std::make_shared<VariableType>(freshTypeVar());
     auto functionType = std::make_shared<FunctionType>(argType, returnType);
-
-    auto functionTypedAst = check(*node.function, functionType);
-
-    return InferOut(
-      std::make_shared<ApplyNode<TypedVar>>(
-        functionTypedAst,
-        argInferOut.typedAst
-      ),
-      returnType
-    );
+    check(*node.function, functionType);
+    return returnType;
   }
 
-  std::shared_ptr<ASTNode<TypedVar>> check(
-    ASTNode<Var>& _node,
-    std::shared_ptr<Type> _type
+  void check(
+    ASTNode& node,
+    const std::shared_ptr<Type>& type
   ) {
-    if (_node.kind == ASTNodeKind::Integer && _type->kind == TypeKind::Integer) {
-      auto node = static_cast<IntegerNode<Var>&>(_node);
-      return std::make_shared<IntegerNode<TypedVar>>(node.literal);
+    if (node.kind == ASTNodeKind::Integer && type->kind == TypeKind::Integer) {
+      return;
     }
 
-    if (_node.kind == ASTNodeKind::Function && _type->kind == TypeKind::Function) {
-      auto node = static_cast<FunctionNode<Var>&>(_node);
-      auto type = static_pointer_cast<FunctionType>(_type);
+    if (node.kind == ASTNodeKind::Function && type->kind == TypeKind::Function) {
+      auto functionNode = static_cast<FunctionNode&>(node);
+      auto functionType = static_pointer_cast<FunctionType>(type);
 
-      auto envState = extendEnv(node.arg, type->from);
-      auto bodyTypedAst = check(*node.body, type->to);
+      auto envState = extendEnv(functionNode.arg, functionType->from);
+      check(*functionNode.body, functionType->to);
       restoreEnv(envState);
 
-      auto functionNode = FunctionNode<TypedVar>(
-        TypedVar(
-          node.arg,
-          type->from
-        ),
-        bodyTypedAst
-      );
-
-      return std::make_shared<FunctionNode<TypedVar>>(functionNode);
+      return;
     }
 
-    auto inferOut = infer(_node);
-    auto constraint = std::make_unique<EqualTypeConstraint>(_type, inferOut.type);
+    auto inferredType = infer(node);
+    auto constraint = std::make_unique<EqualTypeConstraint>(type, inferredType);
     this->constraints.push_back(std::move(constraint));
-    return inferOut.typedAst;
   }
 
   // Helper method to save environment state and set a new value

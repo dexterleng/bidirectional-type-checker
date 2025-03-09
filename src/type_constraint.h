@@ -13,8 +13,6 @@ public:
 
   explicit TypeConstraint(TypeConstraintKind kind) : kind(kind) {}
   virtual ~TypeConstraint() = default;
-
-  virtual void print() const = 0;
 };
 
 class EqualTypeConstraint : public TypeConstraint {
@@ -26,12 +24,6 @@ public:
       : TypeConstraint(TypeConstraintKind::Equal),
         lhs(std::move(lhs)),
         rhs(std::move(rhs)) {}
-
-  void print() const override {
-    std::cout << "TypeEqual Constraint:\n";
-    lhs->print();
-    rhs->print();
-  }
 };
 
 #endif //TYPE_CONSTRAINT_H

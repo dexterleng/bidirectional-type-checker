@@ -6,17 +6,6 @@
 
 using Var = uint32_t;
 
-class TypedVar {
-public:
-  Var var;
-  std::shared_ptr<Type> type;
-
-  TypedVar(Var var, std::shared_ptr<Type> type)
-    : var(var),
-      type(std::move(type)) {
-  }
-};
-
 enum class ASTNodeKind {
   Integer,
   Variable,
@@ -24,7 +13,6 @@ enum class ASTNodeKind {
   Apply
 };
 
-template <typename V>
 class ASTNode {
 public:
   ASTNodeKind kind;
@@ -33,51 +21,47 @@ public:
   virtual ~ASTNode() = default;
 };
 
-template <typename V>
-class IntegerNode : public ASTNode<V> {
+class IntegerNode : public ASTNode {
 public:
   std::string_view literal;
 
   explicit IntegerNode(std::string_view literal)
-    : ASTNode<V>(ASTNodeKind::Integer), literal(literal) {}
+    : ASTNode(ASTNodeKind::Integer), literal(literal) {}
 
   int getValue() const {
     return std::stoi(std::string(literal));
   }
 };
 
-template <typename V>
-class VariableNode : public ASTNode<V> {
+class VariableNode : public ASTNode {
 public:
-  V var;
+  Var var;
 
-  explicit VariableNode(const V &var)
-    : ASTNode<V>(ASTNodeKind::Variable),
+  explicit VariableNode(const Var &var)
+    : ASTNode(ASTNodeKind::Variable),
       var(var) {
   }
 };
 
-template <typename V>
-class FunctionNode : public ASTNode<V> {
+class FunctionNode : public ASTNode {
 public:
-  V arg;
-  std::shared_ptr<ASTNode<V>> body;
+  Var arg;
+  std::shared_ptr<ASTNode> body;
 
-  FunctionNode(const V &arg, std::shared_ptr<ASTNode<V>> body)
-    : ASTNode<V>(ASTNodeKind::Function),
+  FunctionNode(const Var &arg, std::shared_ptr<ASTNode> body)
+    : ASTNode(ASTNodeKind::Function),
       arg(arg),
       body(std::move(body)) {
   }
 };
 
-template <typename V>
-class ApplyNode : public ASTNode<V> {
+class ApplyNode : public ASTNode {
 public:
-  std::shared_ptr<ASTNode<V>> function;
-  std::shared_ptr<ASTNode<V>> argument;
+  std::shared_ptr<ASTNode> function;
+  std::shared_ptr<ASTNode> argument;
 
-  ApplyNode(std::shared_ptr<ASTNode<V>> function, std::shared_ptr<ASTNode<V>> argument)
-    : ASTNode<V>(ASTNodeKind::Apply),
+  ApplyNode(std::shared_ptr<ASTNode> function, std::shared_ptr<ASTNode> argument)
+    : ASTNode(ASTNodeKind::Apply),
       function(std::move(function)),
       argument(std::move(argument)) {
   }
