@@ -1,9 +1,15 @@
 #ifndef UNION_FIND_H
 #define UNION_FIND_H
-#include <utility>
 #include <vector>
 
+#include "error.h"
 #include "type.h"
+
+class UnificationError : public Error {
+public:
+  UnificationError(const Type& typeA, const Type& typeB)
+    : Error("Cannot unify types: " + typeA.toString() + " and " + typeB.toString()) {}
+};
 
 // TODO(perf): implement ranking
 class UnionFind {
@@ -40,33 +46,40 @@ public:
     }
     auto typeAOpt = getType(rootA);
     auto typeBOpt = getType(rootB);
+    auto newRootType = pickNewRootType(typeAOpt, typeBOpt);
+    joinRoots(rootA, rootB, newRootType);
+  }
 
-    if (!typeAOpt.has_value() && !typeBOpt.has_value()) {
-      joinRoots(rootA, rootB, std::nullopt);
-      return;
-    }
-
-    if (typeAOpt.has_value() && !typeBOpt.has_value()) {
-      joinRoots(rootA, rootB, typeAOpt);
-      return;
-    }
-
-    if (!typeAOpt.has_value() && typeBOpt.has_value()) {
-      joinRoots(rootA, rootB, typeBOpt);
-      return;
-    }
-
-    auto typeA = *typeAOpt;
-    auto typeB = *typeBOpt;
-    if (*typeA == *typeB) {
-      joinRoots(rootA, rootB, typeA);
-      return;
-    }
-
-    throw std::runtime_error("Failed to join.");
+  void setType(TypeVar var, const std::optional<std::shared_ptr<Type>>& type) {
+    auto rootVar = find(var);
+    auto rootType = getType(rootVar);
+    auto newRootType = pickNewRootType(rootType, type);
+    types[rootVar] = newRootType;
   }
 
 private:
+  std::optional<std::shared_ptr<Type>> pickNewRootType(const std::optional<std::shared_ptr<Type>>& typeAOpt, const std::optional<std::shared_ptr<Type>>& typeBOpt) {
+    if (!typeAOpt.has_value() && !typeBOpt.has_value()) {
+      return std::nullopt;
+    }
+
+    if (typeAOpt.has_value() && !typeBOpt.has_value()) {
+      return typeAOpt;
+    }
+
+    if (!typeAOpt.has_value() && typeBOpt.has_value()) {
+      return typeBOpt;
+    }
+
+    auto typeA = *typeAOpt;
+    const auto& typeB = *typeBOpt;
+    if (*typeA == *typeB) {
+      return typeA;
+    }
+
+    throw UnificationError(*typeA, *typeB);
+  }
+
   void joinRoots(const TypeVar rootA, const TypeVar rootB, std::optional<std::shared_ptr<Type>> newType) {
     // since there's no ranking, we arbitrarily pick rootA as the new root
     parents[rootB] = rootA;

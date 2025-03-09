@@ -17,13 +17,12 @@ public:
   explicit Type(TypeKind kind) : kind(kind) {}
   virtual ~Type() = default;
 
-  virtual void print() const = 0;
-
   virtual bool operator==(const Type &other) const {
     return kind == other.kind;
   }
-
   bool operator!=(const Type &other) const = default;
+
+  virtual std::string toString() const = 0;
 };
 
 class VariableType : public Type {
@@ -33,10 +32,6 @@ public:
   explicit VariableType(TypeVar typeVar)
     : Type(TypeKind::Variable), typeVar(typeVar) {}
 
-  void print() const override {
-    std::cout << "VariableType: " << typeVar << std::endl;
-  }
-
   bool operator==(const Type &other) const override {
     if (kind != other.kind) {
       return false;
@@ -44,14 +39,18 @@ public:
     auto otherType = static_cast<const VariableType&>(other);
     return typeVar == otherType.typeVar;
   }
+
+  std::string toString() const override {
+    return "VariableType(" + std::to_string(typeVar) + ")";
+  }
 };
 
 class IntegerType : public Type {
 public:
   explicit IntegerType() : Type(TypeKind::Integer) {}
 
-  void print() const override {
-    std::cout << "IntegerType" << std::endl;
+  std::string toString() const override {
+    return "IntegerType";
   }
 };
 
@@ -66,12 +65,6 @@ public:
       to(std::move(to)) {
   }
 
-  void print() const override {
-    std::cout << "FunctionType: from -> to" << std::endl;
-    from->print();
-    to->print();
-  }
-
   bool operator==(const Type &other) const override {
     if (other.kind != TypeKind::Function) {
       return false;
@@ -80,6 +73,10 @@ public:
     auto fromEqual = *from == *(otherType.from);
     auto toEqual = *to == *(otherType.to);
     return fromEqual && toEqual;
+  }
+
+  std::string toString() const override {
+    return "FunctionType(" + from->toString() + " -> " + to->toString() + ")";
   }
 };
 

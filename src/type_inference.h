@@ -61,29 +61,13 @@ public:
     }
   }
 
-//   fn unify_ty_ty(
-//   &mut self,
-//   unnorm_left: Type,
-//   unnorm_right: Type
-// ) -> Result<(), TypeError> {
-//     let left = self.normalize_ty(unnorm_left);
-//     let right = self.normalize_ty(unnorm_right);
-//     match (left, right) {
-//       // ...
-//     }
-//   }
-  // (Type::Int, Type::Int) => Ok(()),
-  // (Type::Fun(a_arg, a_ret), Type::Fun(b_arg, b_ret)) => {
-  //   self.unify_ty_ty(*a_arg, *b_arg)?;
-  //   self.unify_ty_ty(*a_ret, *b_ret)
-  // }
   void solveEqualTypeConstraint(EqualTypeConstraint& constraint) {
     auto lhsType = normalizeType(constraint.lhs);
     auto rhsType = normalizeType(constraint.rhs);
     _solveEqualTypeConstraint(lhsType, rhsType);
   }
 
-  void _solveEqualTypeConstraint(std::shared_ptr<Type> lhsType, std::shared_ptr<Type> rhsType) {
+  void _solveEqualTypeConstraint(const std::shared_ptr<Type>& lhsType, const std::shared_ptr<Type>& rhsType) {
     if (lhsType->kind == TypeKind::Integer && rhsType->kind == TypeKind::Integer) {
       return;
     }
@@ -103,18 +87,36 @@ public:
       return;
     }
 
-    throw std::runtime_error("type not equal");
+    if (lhsType->kind == TypeKind::Variable || rhsType->kind == TypeKind::Variable) {
+      auto variableType = std::static_pointer_cast<VariableType>(lhsType->kind == TypeKind::Variable ? lhsType : rhsType);
+      auto type = lhsType->kind == TypeKind::Variable ? rhsType : lhsType;
 
-    // (Type::Var(v), ty) | (ty, Type::Var(v)) => {
-    //   ty.occurs_check(v)
-    //     .map_err(|ty| TypeError::InfiniteType(v, ty))?;
-    //   self
-    //     .unification_table
-    //     .unify_var_value(v, Some(ty))
-    //     .map_err(|(l, r)| TypeError::TypeNotEqual(l, r))
-    // }
-    //
-    // (left, right) => Err(TypeError::TypeNotEqual(left, right)),
+      if (hasTypeVar(type, variableType->typeVar)) {
+        throw std::runtime_error("infinite type error");
+      }
+
+      unionFind.setType(variableType->typeVar, type); // TODO: catch and throw a type not equal error
+      return;
+    }
+
+    throw std::runtime_error("type not equal");
+  }
+
+  bool hasTypeVar(const std::shared_ptr<Type>& type, TypeVar var) {
+    switch (type->kind) {
+      case TypeKind::Integer:
+        return false;
+      case TypeKind::Variable: {
+        auto varType = static_pointer_cast<VariableType>(type);
+        return varType->typeVar == var;
+      }
+      case TypeKind::Function: {
+        auto funType = static_pointer_cast<FunctionType>(type);
+        return hasTypeVar(funType->from, var) || hasTypeVar(funType->to, var);
+      }
+      default:
+        throw std::runtime_error("Unknown TypeKind in hasTypeVar");
+    }
   }
 
   std::shared_ptr<Type> normalizeType(std::shared_ptr<Type> _type) {
