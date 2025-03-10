@@ -2,96 +2,118 @@
 #define AST_PRETTY_PRINTER_H
 #include "ast_visitor.h"
 #include "union_find.h"
+#include <iostream>
+#include <string>
+#include <vector>
 
 class ASTPrettyPrinter : public ASTVisitor<ASTPrettyPrinter, void, void> {
 public:
-  using ASTVisitor::visit; // Ensure we don't hide the base class `visit`
+  using ASTVisitor::visit;     // Ensure we don't hide the base class expression `visit`
+  using ASTVisitor::visitStmt; // Ensure we don't hide the base class statement `visitStmt`
 
   UnionFind* unionFind;
-  int indent = 0;
+  std::vector<bool> isLastChild; // Track whether each level is the last child
 
   explicit ASTPrettyPrinter(UnionFind* unionFind)
     : unionFind(unionFind) {
   }
 
   void print(Expr& node) {
-    ASTVisitor::visit(node);
+    isLastChild.clear();
+    visit(node);
     std::cout << std::endl;
   }
 
   void printStatement(Stmt& node) {
+    isLastChild.clear();
     visitStmt(node);
     std::cout << std::endl;
   }
 
+  // Expression visitors
   void visitInteger(IntegerNode& node) {
-    printIndent();
+    printPrefix();
     std::cout << "Integer(" << node.getValue() << ")" << std::endl;
   }
 
   void visitDouble(DoubleNode& node) {
-    printIndent();
+    printPrefix();
     std::cout << "Double(" << node.getValue() << ")" << std::endl;
   }
 
   void visitVariable(VariableNode& node) {
-    printIndent();
-    std::cout << "Variable(" << node.var.name << ")" << std::endl;
+    printPrefix();
+    std::cout << "Variable " << node.var.name << std::endl;
   }
 
   void visitFunction(FunctionNode& node) {
-    printIndent();
+    printPrefix();
     std::cout << "Function " << node.arg.name << std::endl;
 
-    indent++;
+    isLastChild.push_back(true); // Body is the only child (last)
     visit(*node.body);
-    indent--;
+    isLastChild.pop_back();
   }
 
   void visitApply(ApplyNode& node) {
-    printIndent();
+    printPrefix();
     std::cout << "Apply" << std::endl;
 
-    indent++;
+    isLastChild.push_back(false); // Function is not the last child
     visit(*node.function);
+    isLastChild.pop_back();
+
+    isLastChild.push_back(true); // Argument is the last child
     visit(*node.argument);
-    indent--;
+    isLastChild.pop_back();
   }
 
   void visitAdd(AddNode& node) {
-    printIndent();
+    printPrefix();
     std::cout << "Add" << std::endl;
 
-    indent++;
+    isLastChild.push_back(false); // Left is not the last child
     visit(*node.left);
+    isLastChild.pop_back();
+
+    isLastChild.push_back(true); // Right is the last child
     visit(*node.right);
-    indent--;
+    isLastChild.pop_back();
   }
 
   // Statement visitors
   void visitBlock(BlockStmt& node) {
-    printIndent();
+    printPrefix();
     std::cout << "Block" << std::endl;
 
-    indent++;
-    for (const auto& stmt : node.statements) {
-      visitStmt(*stmt);
+    for (size_t i = 0; i < node.statements.size(); i++) {
+      bool isLast = (i == node.statements.size() - 1);
+      isLastChild.push_back(isLast);
+      visitStmt(*node.statements[i]);
+      isLastChild.pop_back();
     }
-    indent--;
   }
 
   void visitAssign(AssignStmt& node) {
-    printIndent();
+    printPrefix();
     std::cout << "Assign " << node.var.name << std::endl;
 
-    indent++;
+    isLastChild.push_back(true); // Expression is the only child
     visit(*node.expression);
-    indent--;
+    isLastChild.pop_back();
   }
 
 private:
-  void printIndent() const {
-    std::cout << std::string(indent * 2, ' '); // 2 spaces per level
+  void printPrefix() {
+    for (size_t i = 0; i < isLastChild.size(); i++) {
+      if (i == isLastChild.size() - 1) {
+        // Last level gets corner or tee
+        std::cout << (isLastChild[i] ? " └─ " : " ├─ ");
+      } else {
+        // Upper levels get vertical bar or space
+        std::cout << (isLastChild[i] ? "    " : " │  ");
+      }
+    }
   }
 };
 
