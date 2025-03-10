@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 #include "type_inference.h"
-#include "ast.h"
+#include "expr.h"
 #include "type.h"
 
 class TypeInferenceTest : public ::testing::Test {
@@ -18,11 +18,11 @@ protected:
         return std::make_shared<VariableNode>(var);
     }
 
-    std::shared_ptr<FunctionNode> makeFun(Var arg, std::shared_ptr<ASTNode> body) {
+    std::shared_ptr<FunctionNode> makeFun(Var arg, std::shared_ptr<Expr> body) {
         return std::make_shared<FunctionNode>(arg, std::move(body));
     }
 
-    std::shared_ptr<ApplyNode> makeApp(std::shared_ptr<ASTNode> function, std::shared_ptr<ASTNode> argument) {
+    std::shared_ptr<ApplyNode> makeApp(std::shared_ptr<Expr> function, std::shared_ptr<Expr> argument) {
         return std::make_shared<ApplyNode>(std::move(function), std::move(argument));
     }
 

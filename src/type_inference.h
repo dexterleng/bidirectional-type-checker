@@ -3,7 +3,7 @@
 
 #include <set>
 #include <vector>
-#include "ast.h"
+#include "expr.h"
 #include "type_constraint.h"
 #include "union_find.h"
 
@@ -36,7 +36,7 @@ public:
 
   TypeInference() = default;
 
-  void perform(ASTNode& node) {
+  void perform(Expr& node) {
     auto type = infer(node);
     solveConstraints(node);
     substitute(type);
@@ -79,20 +79,20 @@ private:
     }
   }
 
-  void substituteAst(ASTNode& node) {
+  void substituteAst(Expr& node) {
     switch (node.kind) {
-      case ASTNodeKind::Integer:
-      case ASTNodeKind::Double: {
+      case ExprKind::Integer:
+      case ExprKind::Double: {
         break;
       }
-      case ASTNodeKind::Variable: {
+      case ExprKind::Variable: {
         // For variable nodes, substitute the type.
         auto& varNode = static_cast<VariableNode&>(node);
         auto substitutedType = substitute(varNode.var.type.value());
         varNode.var.type = substitutedType;
         break;
       }
-      case ASTNodeKind::Function: {
+      case ExprKind::Function: {
         // For function nodes, substitute the argument type and then the body
         auto& funNode = static_cast<FunctionNode&>(node);
         // Substitute the argument type
@@ -103,7 +103,7 @@ private:
         substituteAst(*funNode.body);
         break;
       }
-      case ASTNodeKind::Apply: {
+      case ExprKind::Apply: {
         // For apply nodes, substitute in both the function and argument parts
         auto& applyNode = static_cast<ApplyNode&>(node);
         // First substitute in the function
@@ -112,7 +112,7 @@ private:
         substituteAst(*applyNode.argument);
         break;
       }
-      case ASTNodeKind::Add: {
+      case ExprKind::Add: {
         auto& addNode = static_cast<AddNode&>(node);
         substituteAst(*addNode.left);
         substituteAst(*addNode.right);
@@ -127,7 +127,7 @@ private:
    * Solve Constraints
    */
   void solveConstraints(
-    ASTNode& node
+    Expr& node
   ) {
     for (auto& _constraint : this->constraints) {
       switch (_constraint->kind) {
@@ -235,20 +235,20 @@ private:
    * Infer
    */
   std::shared_ptr<Type> infer(
-    ASTNode& node
+    Expr& node
   ) {
     switch (node.kind) {
-      case ASTNodeKind::Integer:
+      case ExprKind::Integer:
         return inferInteger(static_cast<IntegerNode&>(node));
-      case ASTNodeKind::Double:
+      case ExprKind::Double:
         return inferDouble(static_cast<DoubleNode&>(node));
-      case ASTNodeKind::Variable:
+      case ExprKind::Variable:
         return inferVariable(static_cast<VariableNode&>(node));
-      case ASTNodeKind::Function:
+      case ExprKind::Function:
         return inferFunction(static_cast<FunctionNode&>(node));
-      case ASTNodeKind::Apply:
+      case ExprKind::Apply:
         return inferApply(static_cast<ApplyNode&>(node));
-      case ASTNodeKind::Add:
+      case ExprKind::Add:
         return inferAdd(static_cast<AddNode&>(node));
       default:
         throw std::runtime_error("Unknown ASTNodeKind");
@@ -308,18 +308,18 @@ private:
    * Check
    */
   void check(
-    ASTNode& node,
+    Expr& node,
     const std::shared_ptr<Type>& type
   ) {
-    if (node.kind == ASTNodeKind::Integer && type->kind == TypeKind::Integer) {
+    if (node.kind == ExprKind::Integer && type->kind == TypeKind::Integer) {
       return;
     }
 
-    if (node.kind == ASTNodeKind::Double && type->kind == TypeKind::Double) {
+    if (node.kind == ExprKind::Double && type->kind == TypeKind::Double) {
       return;
     }
 
-    if (node.kind == ASTNodeKind::Function && type->kind == TypeKind::Function) {
+    if (node.kind == ExprKind::Function && type->kind == TypeKind::Function) {
       auto& functionNode = static_cast<FunctionNode&>(node);
       auto functionType = static_pointer_cast<FunctionType>(type);
 

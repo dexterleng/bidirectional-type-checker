@@ -1,6 +1,6 @@
 add_library(core
         core.cpp
-        ast.h
+        expr.h
         type.h
         type_inference.h
         type_constraint.h
@@ -8,6 +8,7 @@ add_library(core
         union_find.h
         error.h
         ast_pretty_printer.h
+        stmt.h
 )
 
 add_executable(bidirectional_type_checker main.cpp)

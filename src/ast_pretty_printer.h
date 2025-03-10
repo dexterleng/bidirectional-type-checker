@@ -3,7 +3,7 @@
 #include "ast_visitor.h"
 #include "union_find.h"
 
-class ASTPrettyPrinter : public ASTVisitor<ASTPrettyPrinter, void> {
+class ASTPrettyPrinter : public ASTVisitor<ASTPrettyPrinter, void, void> {
 public:
   using ASTVisitor::visit; // Ensure we don't hide the base class `visit`
 
@@ -14,8 +14,13 @@ public:
     : unionFind(unionFind) {
   }
 
-  void print(ASTNode& node) {
+  void print(Expr& node) {
     ASTVisitor::visit(node);
+    std::cout << std::endl;
+  }
+
+  void printStatement(Stmt& node) {
+    visitStmt(node);
     std::cout << std::endl;
   }
 
@@ -36,23 +41,10 @@ public:
 
   void visitFunction(FunctionNode& node) {
     printIndent();
-    std::cout << "Function" << std::endl;
+    std::cout << "Function " << node.arg.name << std::endl;
 
-    indent++;
-
-    printIndent();
-    std::cout << "Parameters:" << std::endl;
-    indent++;
-    printIndent();
-    std::cout << node.arg.name << std::endl;
-    indent--;
-
-    printIndent();
-    std::cout << "Body" << std::endl;
     indent++;
     visit(*node.body);
-    indent--;
-
     indent--;
   }
 
@@ -62,13 +54,7 @@ public:
 
     indent++;
     visit(*node.function);
-
-    printIndent();
-    std::cout << "Arguments:" << std::endl;
-    indent++;
     visit(*node.argument);
-    indent--;
-
     indent--;
   }
 
@@ -77,18 +63,29 @@ public:
     std::cout << "Add" << std::endl;
 
     indent++;
-    printIndent();
-    std::cout << "Left:" << std::endl;
-    indent++;
     visit(*node.left);
-    indent--;
-
-    printIndent();
-    std::cout << "Right:" << std::endl;
-    indent++;
     visit(*node.right);
     indent--;
+  }
 
+  // Statement visitors
+  void visitBlock(BlockStmt& node) {
+    printIndent();
+    std::cout << "Block" << std::endl;
+
+    indent++;
+    for (const auto& stmt : node.statements) {
+      visitStmt(*stmt);
+    }
+    indent--;
+  }
+
+  void visitAssign(AssignStmt& node) {
+    printIndent();
+    std::cout << "Assign " << node.var.name << std::endl;
+
+    indent++;
+    visit(*node.expression);
     indent--;
   }
 

@@ -1,5 +1,5 @@
-#ifndef AST_H
-#define AST_H
+#ifndef EXPR_H
+#define EXPR_H
 
 #include "type.h"
 
@@ -31,7 +31,7 @@ struct Var {
   bool operator!=(const Var &other) const = default;
 };
 
-enum class ASTNodeKind {
+enum class ExprKind {
   Integer,
   Double,
   Variable,
@@ -40,32 +40,32 @@ enum class ASTNodeKind {
   Add
 };
 
-class ASTNode {
+class Expr {
 public:
-  ASTNodeKind kind;
+  ExprKind kind;
 
-  explicit ASTNode(ASTNodeKind kind) : kind(kind) {}
-  virtual ~ASTNode() = default;
+  explicit Expr(ExprKind kind) : kind(kind) {}
+  virtual ~Expr() = default;
 
-  virtual bool operator==(const ASTNode& other) const {
+  virtual bool operator==(const Expr& other) const {
     return kind == other.kind;
   }
 
-  bool operator!=(const ASTNode& other) const = default;
+  bool operator!=(const Expr& other) const = default;
 };
 
-class IntegerNode : public ASTNode {
+class IntegerNode : public Expr {
 public:
   std::string_view literal;
 
   explicit IntegerNode(std::string_view literal)
-    : ASTNode(ASTNodeKind::Integer), literal(literal) {}
+    : Expr(ExprKind::Integer), literal(literal) {}
 
   int getValue() const {
     return std::stoi(std::string(literal));
   }
 
-  bool operator==(const ASTNode& other) const override {
+  bool operator==(const Expr& other) const override {
     if (kind != other.kind) {
       return false;
     }
@@ -74,18 +74,18 @@ public:
   }
 };
 
-class DoubleNode : public ASTNode {
+class DoubleNode : public Expr {
 public:
   std::string_view literal;
 
   explicit DoubleNode(std::string_view literal)
-    : ASTNode(ASTNodeKind::Double), literal(literal) {}
+    : Expr(ExprKind::Double), literal(literal) {}
 
   double getValue() const {
     return std::stod(std::string(literal));
   }
 
-  bool operator==(const ASTNode& other) const override {
+  bool operator==(const Expr& other) const override {
     if (kind != other.kind) {
       return false;
     }
@@ -94,16 +94,16 @@ public:
   }
 };
 
-class VariableNode : public ASTNode {
+class VariableNode : public Expr {
 public:
   Var var;
 
   explicit VariableNode(const Var &var)
-    : ASTNode(ASTNodeKind::Variable),
+    : Expr(ExprKind::Variable),
       var(var) {
   }
 
-  bool operator==(const ASTNode& other) const override {
+  bool operator==(const Expr& other) const override {
     if (kind != other.kind) {
       return false;
     }
@@ -112,18 +112,18 @@ public:
   }
 };
 
-class FunctionNode : public ASTNode {
+class FunctionNode : public Expr {
 public:
   Var arg;
-  std::shared_ptr<ASTNode> body;
+  std::shared_ptr<Expr> body;
 
-  FunctionNode(const Var &arg, std::shared_ptr<ASTNode> body)
-    : ASTNode(ASTNodeKind::Function),
+  FunctionNode(const Var &arg, std::shared_ptr<Expr> body)
+    : Expr(ExprKind::Function),
       arg(arg),
       body(std::move(body)) {
   }
 
-  bool operator==(const ASTNode& other) const override {
+  bool operator==(const Expr& other) const override {
     if (kind != other.kind) {
       return false;
     }
@@ -137,18 +137,18 @@ public:
   }
 };
 
-class ApplyNode : public ASTNode {
+class ApplyNode : public Expr {
 public:
-  std::shared_ptr<ASTNode> function;
-  std::shared_ptr<ASTNode> argument;
+  std::shared_ptr<Expr> function;
+  std::shared_ptr<Expr> argument;
 
-  ApplyNode(std::shared_ptr<ASTNode> function, std::shared_ptr<ASTNode> argument)
-    : ASTNode(ASTNodeKind::Apply),
+  ApplyNode(std::shared_ptr<Expr> function, std::shared_ptr<Expr> argument)
+    : Expr(ExprKind::Apply),
       function(std::move(function)),
       argument(std::move(argument)) {
   }
 
-  bool operator==(const ASTNode& other) const override {
+  bool operator==(const Expr& other) const override {
     if (kind != other.kind) {
       return false;
     }
@@ -161,18 +161,18 @@ public:
   }
 };
 
-class AddNode : public ASTNode {
+class AddNode : public Expr {
 public:
-  std::shared_ptr<ASTNode> left;
-  std::shared_ptr<ASTNode> right;
+  std::shared_ptr<Expr> left;
+  std::shared_ptr<Expr> right;
 
-  AddNode(std::shared_ptr<ASTNode> left, std::shared_ptr<ASTNode> right)
-    : ASTNode(ASTNodeKind::Add),
+  AddNode(std::shared_ptr<Expr> left, std::shared_ptr<Expr> right)
+    : Expr(ExprKind::Add),
       left(std::move(left)),
       right(std::move(right)) {
   }
 
-  bool operator==(const ASTNode& other) const override {
+  bool operator==(const Expr& other) const override {
     if (kind != other.kind) {
       return false;
     }
@@ -185,4 +185,4 @@ public:
   }
 };
 
-#endif //AST_H
+#endif //EXPR_H
