@@ -6,6 +6,7 @@ using TypeVar = uint32_t;
 
 enum class TypeKind {
   Integer,
+  Double,
   Variable,
   Function,
 };
@@ -36,7 +37,7 @@ public:
     if (kind != other.kind) {
       return false;
     }
-    auto otherType = static_cast<const VariableType&>(other);
+    auto& otherType = static_cast<const VariableType&>(other);
     return typeVar == otherType.typeVar;
   }
 
@@ -51,6 +52,15 @@ public:
 
   std::string toString() const override {
     return "IntegerType";
+  }
+};
+
+class DoubleType : public Type {
+public:
+  explicit DoubleType() : Type(TypeKind::Double) {}
+
+  std::string toString() const override {
+    return "DoubleType";
   }
 };
 
@@ -69,7 +79,7 @@ public:
     if (other.kind != TypeKind::Function) {
       return false;
     }
-    auto otherType = static_cast<const FunctionType&>(other);
+    auto& otherType = static_cast<const FunctionType&>(other);
     auto fromEqual = *from == *(otherType.from);
     auto toEqual = *to == *(otherType.to);
     return fromEqual && toEqual;

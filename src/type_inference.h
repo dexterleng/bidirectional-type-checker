@@ -14,13 +14,17 @@ struct EnvState {
   std::shared_ptr<Type> oldValue;
 };
 
-struct TypeScheme {
-  std::set<TypeVar> unbound;
-  std::shared_ptr<Type> ty;
+class InfiniteTypeError : public Error {
+public:
+  InfiniteTypeError(const Type& variableType, const Type& cycleType)
+    : Error("Infinite type detected: " + variableType.toString() +
+            " occurs in " + cycleType.toString()) {}
+};
 
-  bool operator==(const TypeScheme& other) const {
-    return unbound == other.unbound && *ty == *(other.ty);
-  }
+class TypeNotEqualError : public Error {
+public:
+  TypeNotEqualError(const Type& typeA, const Type& typeB)
+    : Error("Types are not equal: " + typeA.toString() + " and " + typeB.toString()) {}
 };
 
 class TypeInference {
@@ -42,8 +46,9 @@ public:
 private:
   std::shared_ptr<Type> substitute(std::shared_ptr<Type> ty) {
     switch (ty->kind) {
-      case TypeKind::Integer: {
-        // For integer types, return empty set of unbound variables and the original type
+      case TypeKind::Integer:
+      case TypeKind::Double: {
+        // For integer and double types, return empty set of unbound variables and the original type
         return ty;
       }
       case TypeKind::Variable: {
@@ -58,6 +63,7 @@ private:
         } else {
           // If unbound, add to set of unbound variables
           unbounded.insert(root);
+
           return std::make_shared<VariableType>(root);
         }
       }
@@ -75,9 +81,8 @@ private:
 
   void substituteAst(ASTNode& node) {
     switch (node.kind) {
-      case ASTNodeKind::Integer: {
-        // For integer nodes, no substitution needed.
-        auto& intNode = static_cast<IntegerNode&>(node);
+      case ASTNodeKind::Integer:
+      case ASTNodeKind::Double: {
         break;
       }
       case ASTNodeKind::Variable: {
@@ -105,6 +110,12 @@ private:
         substituteAst(*applyNode.function);
         // Then substitute in the argument
         substituteAst(*applyNode.argument);
+        break;
+      }
+      case ASTNodeKind::Add: {
+        auto& addNode = static_cast<AddNode&>(node);
+        substituteAst(*addNode.left);
+        substituteAst(*addNode.right);
         break;
       }
       default:
@@ -142,6 +153,10 @@ private:
       return;
     }
 
+    if (lhsType->kind == TypeKind::Double && rhsType->kind == TypeKind::Double) {
+      return;
+    }
+
     if (lhsType->kind == TypeKind::Function && rhsType->kind == TypeKind::Function) {
       auto lhsFunctionType = static_pointer_cast<FunctionType>(lhsType);
       auto rhsFunctionType = static_pointer_cast<FunctionType>(rhsType);
@@ -162,19 +177,20 @@ private:
       auto type = lhsType->kind == TypeKind::Variable ? rhsType : lhsType;
 
       if (hasTypeVar(type, variableType->typeVar)) {
-        throw std::runtime_error("infinite type error");
+        throw InfiniteTypeError(*variableType, *type);
       }
 
-      unionFind.setType(variableType->typeVar, type); // TODO: catch and throw a type not equal error
+      unionFind.setType(variableType->typeVar, type);
       return;
     }
 
-    throw std::runtime_error("type not equal");
+    throw TypeNotEqualError(*lhsType, *rhsType);
   }
 
   bool hasTypeVar(const std::shared_ptr<Type>& type, TypeVar var) {
     switch (type->kind) {
       case TypeKind::Integer:
+      case TypeKind::Double:
         return false;
       case TypeKind::Variable: {
         auto varType = static_pointer_cast<VariableType>(type);
@@ -192,6 +208,7 @@ private:
   std::shared_ptr<Type> normalizeType(std::shared_ptr<Type> _type) {
     switch (_type->kind) {
       case TypeKind::Integer:
+      case TypeKind::Double:
         return _type;
       case TypeKind::Variable: {
         auto type = static_pointer_cast<VariableType>(_type);
@@ -223,12 +240,16 @@ private:
     switch (node.kind) {
       case ASTNodeKind::Integer:
         return inferInteger(static_cast<IntegerNode&>(node));
+      case ASTNodeKind::Double:
+        return inferDouble(static_cast<DoubleNode&>(node));
       case ASTNodeKind::Variable:
         return inferVariable(static_cast<VariableNode&>(node));
       case ASTNodeKind::Function:
         return inferFunction(static_cast<FunctionNode&>(node));
       case ASTNodeKind::Apply:
         return inferApply(static_cast<ApplyNode&>(node));
+      case ASTNodeKind::Add:
+        return inferAdd(static_cast<AddNode&>(node));
       default:
         throw std::runtime_error("Unknown ASTNodeKind");
     }
@@ -236,6 +257,10 @@ private:
 
   std::shared_ptr<Type> inferInteger(IntegerNode& node) {
     return std::make_shared<IntegerType>();
+  }
+
+  std::shared_ptr<Type> inferDouble(DoubleNode& node) {
+    return std::make_shared<DoubleType>();
   }
 
   std::shared_ptr<Type> inferVariable(VariableNode& node) {
@@ -267,6 +292,14 @@ private:
     return returnType;
   }
 
+  std::shared_ptr<Type> inferAdd(AddNode& node) {
+    auto leftType = infer(*node.left);
+    auto rightType = infer(*node.right);
+    auto constraint = std::make_unique<EqualTypeConstraint>(leftType, rightType);
+    this->constraints.push_back(std::move(constraint));
+    return leftType;
+  }
+
   TypeVar freshTypeVar() {
     return unionFind.insert(std::nullopt);
   }
@@ -282,8 +315,12 @@ private:
       return;
     }
 
+    if (node.kind == ASTNodeKind::Double && type->kind == TypeKind::Double) {
+      return;
+    }
+
     if (node.kind == ASTNodeKind::Function && type->kind == TypeKind::Function) {
-      auto functionNode = static_cast<FunctionNode&>(node);
+      auto& functionNode = static_cast<FunctionNode&>(node);
       auto functionType = static_pointer_cast<FunctionType>(type);
 
       auto envState = extendEnv(functionNode.arg, functionType->from);

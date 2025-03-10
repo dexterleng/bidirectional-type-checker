@@ -24,6 +24,11 @@ public:
     std::cout << "Integer(" << node.getValue() << ")" << std::endl;
   }
 
+  void visitDouble(DoubleNode& node) {
+    printIndent();
+    std::cout << "Double(" << node.getValue() << ")" << std::endl;
+  }
+
   void visitVariable(VariableNode& node) {
     printIndent();
     std::cout << "Variable(" << node.var.name << ")" << std::endl;
@@ -62,6 +67,26 @@ public:
     std::cout << "Arguments:" << std::endl;
     indent++;
     visit(*node.argument);
+    indent--;
+
+    indent--;
+  }
+
+  void visitAdd(AddNode& node) {
+    printIndent();
+    std::cout << "Add" << std::endl;
+
+    indent++;
+    printIndent();
+    std::cout << "Left:" << std::endl;
+    indent++;
+    visit(*node.left);
+    indent--;
+
+    printIndent();
+    std::cout << "Right:" << std::endl;
+    indent++;
+    visit(*node.right);
     indent--;
 
     indent--;

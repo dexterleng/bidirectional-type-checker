@@ -61,6 +61,37 @@ TEST(UnionFindTest, MergeNulloptWithInt) {
   EXPECT_EQ(*uf.getType(var1).value(), *type2);
 }
 
+TEST(UnionFindTest, MergeDoubleWithNullopt) {
+  UnionFind uf;
+  auto type1 = std::make_shared<DoubleType>();
+  TypeVar var1 = uf.insert(type1);
+  TypeVar var2 = uf.insert(std::nullopt);
+  uf.join(var1, var2);
+  EXPECT_EQ(uf.find(var1), uf.find(var2));
+  EXPECT_TRUE(uf.getType(var1).has_value());
+  EXPECT_EQ(*uf.getType(var1).value(), *type1);
+}
+
+TEST(UnionFindTest, MergeNulloptWithDouble) {
+  UnionFind uf;
+  TypeVar var1 = uf.insert(std::nullopt);
+  auto type2 = std::make_shared<DoubleType>();
+  TypeVar var2 = uf.insert(type2);
+  uf.join(var1, var2);
+  EXPECT_EQ(uf.find(var1), uf.find(var2));
+  EXPECT_TRUE(uf.getType(var1).has_value());
+  EXPECT_EQ(*uf.getType(var1).value(), *type2);
+}
+
+TEST(UnionFindTest, MergeIntWithDouble) { // no subtyping :(
+  UnionFind uf;
+  auto type1 = std::make_shared<IntegerType>();
+  auto type2 = std::make_shared<DoubleType>();
+  TypeVar var1 = uf.insert(type1);
+  TypeVar var2 = uf.insert(type2);
+  EXPECT_THROW(uf.join(var1, var2), UnificationError);
+}
+
 TEST(UnionFindTest, MergeEquivalentFunctions) {
   UnionFind uf;
   auto func1 = std::make_shared<FunctionType>(
