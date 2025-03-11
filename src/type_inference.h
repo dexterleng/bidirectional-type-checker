@@ -1,18 +1,13 @@
 #ifndef TYPE_INFERENCE_H
 #define TYPE_INFERENCE_H
 
+#include <ranges>
 #include <set>
+#include <utility>
 #include <vector>
 #include "expr.h"
 #include "type_constraint.h"
 #include "union_find.h"
-
-// Helper struct to store environment state for later restoration
-struct EnvState {
-  Var var;
-  bool existed;
-  std::shared_ptr<Type> oldValue;
-};
 
 class InfiniteTypeError : public Error {
 public:
@@ -29,7 +24,8 @@ public:
 
 class TypeInference {
 public:
-  std::unordered_map<VariableName, std::shared_ptr<Type>> env;
+  // nil value represents declared but not defined. used to prevent referencing a variable in the same assignment statement.
+  std::vector<std::unordered_map<VariableName, std::optional<std::shared_ptr<Type>>>> envs;
   std::vector<std::unique_ptr<TypeConstraint>> constraints;
   std::set<TypeVar> unbounded;
   UnionFind unionFind;
@@ -238,66 +234,76 @@ private:
     Expr& node
   ) {
     switch (node.kind) {
-      case ExprKind::Integer:
-        return inferInteger(static_cast<IntegerNode&>(node));
-      case ExprKind::Double:
-        return inferDouble(static_cast<DoubleNode&>(node));
-      case ExprKind::Variable:
-        return inferVariable(static_cast<VariableNode&>(node));
-      case ExprKind::Function:
-        return inferFunction(static_cast<FunctionNode&>(node));
-      case ExprKind::Apply:
-        return inferApply(static_cast<ApplyNode&>(node));
-      case ExprKind::Add:
-        return inferAdd(static_cast<AddNode&>(node));
+      case ExprKind::Integer: {
+        return std::make_shared<IntegerType>();
+      }
+      case ExprKind::Double: {
+        return std::make_shared<DoubleType>();
+      }
+      case ExprKind::Variable: {
+        auto& varNode = static_cast<VariableNode&>(node);
+        auto type = lookup(varNode.var);
+        varNode.var.type = type;
+        return type;
+      }
+      case ExprKind::Function: {
+        auto& funNode = static_cast<FunctionNode&>(node);
+        auto argumentType = std::make_shared<VariableType>(freshTypeVar());
+        funNode.arg.type = argumentType;
+
+        beginScope();
+        define(funNode.arg, argumentType);
+        auto bodyType = infer(*funNode.body);
+        endScope();
+
+        return std::make_unique<FunctionType>(
+          argumentType,
+          bodyType
+        );
+      }
+      case ExprKind::Apply: {
+        auto& applyNode = static_cast<ApplyNode&>(node);
+        // construct a function type to check against the real function
+        auto argType = infer(*applyNode.argument);
+        auto returnType = std::make_shared<VariableType>(freshTypeVar());
+        auto functionType = std::make_shared<FunctionType>(argType, returnType);
+        check(*applyNode.function, functionType);
+        return returnType;
+      }
+      case ExprKind::Add: {
+        auto& addNode = static_cast<AddNode&>(node);
+        auto leftType = infer(*addNode.left);
+        auto rightType = infer(*addNode.right);
+        auto constraint = std::make_unique<EqualTypeConstraint>(leftType, rightType);
+        this->constraints.push_back(std::move(constraint));
+        return leftType;
+      }
       default:
         throw std::runtime_error("Unknown ASTNodeKind");
     }
   }
 
-  std::shared_ptr<Type> inferInteger(IntegerNode& node) {
-    return std::make_shared<IntegerType>();
-  }
-
-  std::shared_ptr<Type> inferDouble(DoubleNode& node) {
-    return std::make_shared<DoubleType>();
-  }
-
-  std::shared_ptr<Type> inferVariable(VariableNode& node) {
-    auto type = env[node.var.name];
-    node.var.type = type;
-    return type;
-  }
-
-  std::shared_ptr<Type> inferFunction(FunctionNode& node) {
-    auto argumentType = std::make_shared<VariableType>(freshTypeVar());
-    node.arg.type = argumentType;
-
-    EnvState envState = extendEnv(node.arg, argumentType);
-    auto bodyType = infer(*node.body);
-    restoreEnv(envState);
-
-    return std::make_unique<FunctionType>(
-      argumentType,
-      bodyType
-    );
-  }
-
-  std::shared_ptr<Type> inferApply(ApplyNode& node) {
-    // construct a function type to check against the real function
-    auto argType = infer(*node.argument);
-    auto returnType = std::make_shared<VariableType>(freshTypeVar());
-    auto functionType = std::make_shared<FunctionType>(argType, returnType);
-    check(*node.function, functionType);
-    return returnType;
-  }
-
-  std::shared_ptr<Type> inferAdd(AddNode& node) {
-    auto leftType = infer(*node.left);
-    auto rightType = infer(*node.right);
-    auto constraint = std::make_unique<EqualTypeConstraint>(leftType, rightType);
-    this->constraints.push_back(std::move(constraint));
-    return leftType;
+  void infer(Stmt& node) {
+    switch (node.kind) {
+      case StmtKind::Block: {
+        auto block = static_cast<BlockStmt&>(node);
+        beginScope();
+        for (auto& stmt : block.statements) {
+          infer(*stmt);
+        }
+        endScope();
+        break;
+      }
+      case StmtKind::Assign: {
+        auto assignStmt = static_cast<AssignStmt&>(node);
+        declare(assignStmt.var);
+        auto exprType = infer(*assignStmt.expression);
+        define(assignStmt.var, exprType);
+        break;
+      }
+      default:
+        throw std::runtime_error("Unknown StmtKind");
+    }
   }
 
   TypeVar freshTypeVar() {
@@ -323,9 +329,11 @@ private:
       auto& functionNode = static_cast<FunctionNode&>(node);
       auto functionType = static_pointer_cast<FunctionType>(type);
 
-      auto envState = extendEnv(functionNode.arg, functionType->from);
+      beginScope();
+      declare(functionNode.arg);
+      define(functionNode.arg, functionType->from);
       check(*functionNode.body, functionType->to);
-      restoreEnv(envState);
+      endScope();
 
       functionNode.arg.type = functionType->from;
       return;
@@ -339,27 +347,39 @@ private:
   /*
    * Env
    */
-  // Helper method to save environment state and set a new value
-  EnvState extendEnv(const Var& var, std::shared_ptr<Type> type) {
-    EnvState state{var, false, nullptr};
-    auto it = env.find(var.name);
-
-    if (it != env.end()) {
-      state.existed = true;
-      state.oldValue = it->second;
-    }
-
-    env[var.name] = std::move(type);
-    return state;
+  void beginScope() {
+    envs.emplace_back();
   }
 
-  // Helper method to restore previous environment state
-  void restoreEnv(const EnvState& state) {
-    if (state.existed) {
-      env[state.var.name] = state.oldValue;
-    } else {
-      env.erase(state.var.name);
+  void endScope() {
+    envs.pop_back();
+  }
+
+  void declare(const Var& var) {
+    auto& env = envs.back();
+    if (env.contains(var.name)) {
+      throw std::runtime_error("Variable " + std::to_string(var.name) + " is already defined in this scope.");
     }
+    env[var.name] = std::nullopt;
+  }
+
+  void define(const Var& var, std::shared_ptr<Type> type) {
+    auto& env = envs.back();
+    env[var.name] = std::move(type);
+  }
+
+  std::shared_ptr<Type> lookup(const Var& var) {
+    for (auto & env : std::ranges::reverse_view(envs)) {
+      auto found = env.find(var.name);
+      if (found != env.end()) {
+        auto typeOpt = found->second;
+        if (typeOpt.has_value()) {
+          return typeOpt.value();
+        }
+        throw std::runtime_error("Cannot read variable while it is being defined.");
+      }
+    }
+    throw std::runtime_error("Variable " + std::to_string(var.name) + " not found in any scope.");
   }
 };
 
