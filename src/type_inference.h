@@ -29,7 +29,7 @@ public:
   std::vector<std::unique_ptr<TypeConstraint>> constraints;
   std::set<TypeVar> unbounded;
   // to check return type
-  FunctionStmt* enclosingFunction;
+  FunctionStmt* enclosingFunction = nullptr;
   UnionFind unionFind;
 
   TypeInference() = default;
@@ -51,9 +51,9 @@ public:
 private:
   std::shared_ptr<Type> substitute(std::shared_ptr<Type> ty) {
     switch (ty->kind) {
+      case TypeKind::Void:
       case TypeKind::Integer:
       case TypeKind::Double: {
-        // For integer and double types, return empty set of unbound variables and the original type
         return ty;
       }
       case TypeKind::Variable: {
@@ -146,6 +146,11 @@ private:
         }
         break;
       }
+      case StmtKind::Return: {
+        auto& returnStmt = static_cast<ReturnStmt&>(node);
+        substituteAst(*returnStmt.expression);
+        break;
+      }
       default:
         throw std::runtime_error("Unknown StmtKind");
     }
@@ -175,6 +180,10 @@ private:
   }
 
   void _solveEqualTypeConstraint(const std::shared_ptr<Type>& lhsType, const std::shared_ptr<Type>& rhsType) {
+    if (lhsType->kind == TypeKind::Void && rhsType->kind == TypeKind::Void) {
+      return;
+    }
+
     if (lhsType->kind == TypeKind::Integer && rhsType->kind == TypeKind::Integer) {
       return;
     }
@@ -215,6 +224,7 @@ private:
 
   bool hasTypeVar(const std::shared_ptr<Type>& type, TypeVar var) {
     switch (type->kind) {
+      case TypeKind::Void:
       case TypeKind::Integer:
       case TypeKind::Double:
         return false;
@@ -233,6 +243,7 @@ private:
 
   std::shared_ptr<Type> normalizeType(std::shared_ptr<Type> _type) {
     switch (_type->kind) {
+      case TypeKind::Void:
       case TypeKind::Integer:
       case TypeKind::Double:
         return _type;
@@ -276,21 +287,6 @@ private:
         varNode.var.type = type;
         return type;
       }
-      // case ExprKind::Function: {
-      //   auto& funNode = static_cast<FunctionNode&>(node);
-      //   auto argumentType = std::make_shared<VariableType>(freshTypeVar());
-      //   funNode.arg.type = argumentType;
-      //
-      //   beginScope();
-      //   define(funNode.arg, argumentType);
-      //   auto bodyType = infer(*funNode.body);
-      //   endScope();
-      //
-      //   return std::make_unique<FunctionType>(
-      //     argumentType,
-      //     bodyType
-      //   );
-      // }
       case ExprKind::Apply: {
         auto& applyNode = static_cast<ApplyNode&>(node);
         // construct a function type to check against the real function
@@ -313,7 +309,8 @@ private:
     }
   }
 
-  void infer(Stmt& node) {
+  using FallsThrough = bool;
+  FallsThrough infer(Stmt& node) {
     switch (node.kind) {
       case StmtKind::Block: {
         auto& block = static_cast<BlockStmt&>(node);
@@ -322,14 +319,15 @@ private:
           infer(*stmt);
         }
         endScope();
-        break;
+        return false; // FIXME
       }
       case StmtKind::Assign: {
         auto& assignStmt = static_cast<AssignStmt&>(node);
         declare(assignStmt.var);
         auto exprType = infer(*assignStmt.expression);
         define(assignStmt.var, exprType);
-        break;
+        assignStmt.var.type = exprType;
+        return true;
       }
       case StmtKind::Function: {
         auto& funStmt = static_cast<FunctionStmt&>(node);
@@ -339,22 +337,33 @@ private:
         enclosingFunction = &funStmt;
 
         for (auto& param : funStmt.params) {
-          define(param,  param.type.value());
           declare(param);
+          define(param, param.type.value());
         }
 
+        auto returnType = funStmt.returnType;
+        auto fallsThrough = true;
         for (auto& stmt : funStmt.body) {
-          infer(*stmt);
+          auto stmtFallsThrough = infer(*stmt);
+          if (!stmtFallsThrough) {
+            fallsThrough = false;
+          }
+        }
+
+        // Check if function falls through without returning
+        if (fallsThrough && funStmt.returnType->kind != TypeKind::Void) {
+          throw TypeNotEqualError(*funStmt.returnType, VoidType());
         }
 
         endScope();
         enclosingFunction = prevEnclosingFunction;
 
-        break;
+        return false;
       }
-      case StmtKind::Return: { // FIXME: this checks the return type against the enclosing function. what if return is omitted?
+      case StmtKind::Return: {
         auto& returnStmt = static_cast<ReturnStmt&>(node);
         check(*returnStmt.expression, enclosingFunction->returnType);
+        return false;
       }
       default:
         throw std::runtime_error("Unknown StmtKind");

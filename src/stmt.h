@@ -86,16 +86,15 @@ class FunctionStmt : public Stmt {
 public:
   Var name;
   std::vector<Var> params;
-  std::vector<std::shared_ptr<Stmt>> body;
   std::shared_ptr<Type> returnType;
+  std::vector<std::shared_ptr<Stmt>> body;
 
-  FunctionStmt(Var name, std::vector<Var> params, std::vector<std::shared_ptr<Stmt>> body, std::shared_ptr<Type> returnType)
+  FunctionStmt(Var name, std::vector<Var> params, std::shared_ptr<Type> returnType, std::vector<std::shared_ptr<Stmt>> body)
     : Stmt(StmtKind::Function),
       name(std::move(name)),
       params(std::move(params)),
-      body(std::move(body)),
-      returnType(std::move(returnType)) {
-  }
+      returnType(std::move(returnType)),
+      body(std::move(body)) {}
 
   bool operator==(const Stmt& other) const override {
     if (kind != other.kind) {
