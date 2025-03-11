@@ -35,7 +35,6 @@ enum class ExprKind {
   Integer,
   Double,
   Variable,
-  Function,
   Apply,
   Add
 };
@@ -109,31 +108,6 @@ public:
     }
     const auto& otherVar = static_cast<const VariableNode&>(other);
     return var == otherVar.var;
-  }
-};
-
-class FunctionNode : public Expr {
-public:
-  Var arg;
-  std::shared_ptr<Expr> body;
-
-  FunctionNode(const Var &arg, std::shared_ptr<Expr> body)
-    : Expr(ExprKind::Function),
-      arg(arg),
-      body(std::move(body)) {
-  }
-
-  bool operator==(const Expr& other) const override {
-    if (kind != other.kind) {
-      return false;
-    }
-    const auto& otherFunc = static_cast<const FunctionNode&>(other);
-
-    // Compare arg
-    if (!(arg == otherFunc.arg)) return false;
-
-    // Compare body
-    return *body == *otherFunc.body;
   }
 };
 

@@ -3,9 +3,9 @@
 
 #include <ranges>
 #include <set>
-#include <utility>
 #include <vector>
 #include "expr.h"
+#include "stmt.h"
 #include "type_constraint.h"
 #include "union_find.h"
 
@@ -28,13 +28,22 @@ public:
   std::vector<std::unordered_map<VariableName, std::optional<std::shared_ptr<Type>>>> envs;
   std::vector<std::unique_ptr<TypeConstraint>> constraints;
   std::set<TypeVar> unbounded;
+  // to check return type
+  FunctionStmt* enclosingFunction;
   UnionFind unionFind;
 
   TypeInference() = default;
 
+  void perform(Stmt& node) {
+    infer(node);
+    solveConstraints();
+    substituteAst(node);
+  }
+
+  // remove?
   void perform(Expr& node) {
     auto type = infer(node);
-    solveConstraints(node);
+    solveConstraints();
     substitute(type);
     substituteAst(node);
   }
@@ -88,17 +97,6 @@ private:
         varNode.var.type = substitutedType;
         break;
       }
-      case ExprKind::Function: {
-        // For function nodes, substitute the argument type and then the body
-        auto& funNode = static_cast<FunctionNode&>(node);
-        // Substitute the argument type
-        auto argType = substitute(funNode.arg.type.value());
-        // Update function node with updated argument type
-        funNode.arg.type = argType;
-        // Recursively substitute in the body
-        substituteAst(*funNode.body);
-        break;
-      }
       case ExprKind::Apply: {
         // For apply nodes, substitute in both the function and argument parts
         auto& applyNode = static_cast<ApplyNode&>(node);
@@ -119,12 +117,44 @@ private:
     }
   }
 
+  void substituteAst(Stmt& node) {
+    switch (node.kind) {
+      case StmtKind::Block: {
+        auto& block = static_cast<BlockStmt&>(node);
+        for (auto& stmt : block.statements) {
+          substituteAst(*stmt);
+        }
+        break;
+      }
+      case StmtKind::Assign: {
+        auto& assignStmt = static_cast<AssignStmt&>(node);
+        auto argType = substitute(assignStmt.var.type.value());
+        assignStmt.var.type = argType;
+        break;
+      }
+      case StmtKind::Function: {
+        // For function nodes, substitute the parameters and then the body
+        auto& funStmt = static_cast<FunctionStmt&>(node);
+        // Substitute the parameters
+        for (auto& param : funStmt.params) {
+          auto paramType = substitute(param.type.value());
+          param.type = paramType;
+        }
+        // Recursively substitute the body
+        for (auto& stmt : funStmt.body) {
+          substituteAst(*stmt);
+        }
+        break;
+      }
+      default:
+        throw std::runtime_error("Unknown StmtKind");
+    }
+  }
+
   /*
    * Solve Constraints
    */
-  void solveConstraints(
-    Expr& node
-  ) {
+  void solveConstraints() {
     for (auto& _constraint : this->constraints) {
       switch (_constraint->kind) {
         case TypeConstraintKind::Equal: {
@@ -246,21 +276,21 @@ private:
         varNode.var.type = type;
         return type;
       }
-      case ExprKind::Function: {
-        auto& funNode = static_cast<FunctionNode&>(node);
-        auto argumentType = std::make_shared<VariableType>(freshTypeVar());
-        funNode.arg.type = argumentType;
-
-        beginScope();
-        define(funNode.arg, argumentType);
-        auto bodyType = infer(*funNode.body);
-        endScope();
-
-        return std::make_unique<FunctionType>(
-          argumentType,
-          bodyType
-        );
-      }
+      // case ExprKind::Function: {
+      //   auto& funNode = static_cast<FunctionNode&>(node);
+      //   auto argumentType = std::make_shared<VariableType>(freshTypeVar());
+      //   funNode.arg.type = argumentType;
+      //
+      //   beginScope();
+      //   define(funNode.arg, argumentType);
+      //   auto bodyType = infer(*funNode.body);
+      //   endScope();
+      //
+      //   return std::make_unique<FunctionType>(
+      //     argumentType,
+      //     bodyType
+      //   );
+      // }
       case ExprKind::Apply: {
         auto& applyNode = static_cast<ApplyNode&>(node);
         // construct a function type to check against the real function
@@ -286,7 +316,7 @@ private:
   void infer(Stmt& node) {
     switch (node.kind) {
       case StmtKind::Block: {
-        auto block = static_cast<BlockStmt&>(node);
+        auto& block = static_cast<BlockStmt&>(node);
         beginScope();
         for (auto& stmt : block.statements) {
           infer(*stmt);
@@ -295,11 +325,36 @@ private:
         break;
       }
       case StmtKind::Assign: {
-        auto assignStmt = static_cast<AssignStmt&>(node);
+        auto& assignStmt = static_cast<AssignStmt&>(node);
         declare(assignStmt.var);
         auto exprType = infer(*assignStmt.expression);
         define(assignStmt.var, exprType);
         break;
+      }
+      case StmtKind::Function: {
+        auto& funStmt = static_cast<FunctionStmt&>(node);
+
+        beginScope();
+        auto prevEnclosingFunction = enclosingFunction;
+        enclosingFunction = &funStmt;
+
+        for (auto& param : funStmt.params) {
+          define(param,  param.type.value());
+          declare(param);
+        }
+
+        for (auto& stmt : funStmt.body) {
+          infer(*stmt);
+        }
+
+        endScope();
+        enclosingFunction = prevEnclosingFunction;
+
+        break;
+      }
+      case StmtKind::Return: { // FIXME: this checks the return type against the enclosing function. what if return is omitted?
+        auto& returnStmt = static_cast<ReturnStmt&>(node);
+        check(*returnStmt.expression, enclosingFunction->returnType);
       }
       default:
         throw std::runtime_error("Unknown StmtKind");
@@ -325,19 +380,19 @@ private:
       return;
     }
 
-    if (node.kind == ExprKind::Function && type->kind == TypeKind::Function) {
-      auto& functionNode = static_cast<FunctionNode&>(node);
-      auto functionType = static_pointer_cast<FunctionType>(type);
-
-      beginScope();
-      declare(functionNode.arg);
-      define(functionNode.arg, functionType->from);
-      check(*functionNode.body, functionType->to);
-      endScope();
-
-      functionNode.arg.type = functionType->from;
-      return;
-    }
+    // if (node.kind == ExprKind::Function && type->kind == TypeKind::Function) {
+    //   auto& functionNode = static_cast<FunctionNode&>(node);
+    //   auto functionType = static_pointer_cast<FunctionType>(type);
+    //
+    //   beginScope();
+    //   declare(functionNode.arg);
+    //   define(functionNode.arg, functionType->from);
+    //   check(*functionNode.body, functionType->to);
+    //   endScope();
+    //
+    //   functionNode.arg.type = functionType->from;
+    //   return;
+    // }
 
     auto inferredType = infer(node);
     auto constraint = std::make_unique<EqualTypeConstraint>(type, inferredType);

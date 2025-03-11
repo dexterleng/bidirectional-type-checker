@@ -5,6 +5,7 @@
 using TypeVar = uint32_t;
 
 enum class TypeKind {
+  Void,
   Integer,
   Double,
   Variable,
@@ -24,6 +25,15 @@ public:
   bool operator!=(const Type &other) const = default;
 
   virtual std::string toString() const = 0;
+};
+
+class VoidType : public Type {
+public:
+  explicit VoidType() : Type(TypeKind::Void) {}
+
+  std::string toString() const override {
+    return "VoidType";
+  }
 };
 
 class VariableType : public Type {

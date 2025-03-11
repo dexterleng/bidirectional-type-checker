@@ -17,8 +17,6 @@ public:
         return static_cast<ImplClass*>(this)->visitDouble(static_cast<DoubleNode&>(node), std::forward<Args>(args)...);
       case ExprKind::Variable:
         return static_cast<ImplClass*>(this)->visitVariable(static_cast<VariableNode&>(node), std::forward<Args>(args)...);
-      case ExprKind::Function:
-        return static_cast<ImplClass*>(this)->visitFunction(static_cast<FunctionNode&>(node), std::forward<Args>(args)...);
       case ExprKind::Apply:
         return static_cast<ImplClass*>(this)->visitApply(static_cast<ApplyNode&>(node), std::forward<Args>(args)...);
       case ExprKind::Add:
@@ -34,6 +32,10 @@ public:
         return static_cast<ImplClass*>(this)->visitBlock(static_cast<BlockStmt&>(node), std::forward<Args>(args)...);
       case StmtKind::Assign:
         return static_cast<ImplClass*>(this)->visitAssign(static_cast<AssignStmt&>(node), std::forward<Args>(args)...);
+      case StmtKind::Function:
+        return static_cast<ImplClass*>(this)->visitFunction(static_cast<FunctionStmt&>(node), std::forward<Args>(args)...);
+      case StmtKind::Return:
+        return static_cast<ImplClass*>(this)->visitReturn(static_cast<ReturnStmt&>(node), std::forward<Args>(args)...);
       default:
         throw std::runtime_error("Unknown StmtKind");
     }

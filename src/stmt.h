@@ -7,7 +7,9 @@
 // Enum for statement nodes
 enum class StmtKind {
   Block,
-  Assign
+  Assign,
+  Function,
+  Return
 };
 
 // Base class for statements
@@ -48,7 +50,7 @@ public:
 
     // Compare each statement
     for (size_t i = 0; i < statements.size(); i++) {
-      if (!(*statements[i] == *otherBlock.statements[i])) {
+      if (*statements[i] != *otherBlock.statements[i]) {
         return false;
       }
     }
@@ -77,6 +79,63 @@ public:
 
     // Compare variable and expression
     return var == otherAssign.var && *expression == *otherAssign.expression;
+  }
+};
+
+class FunctionStmt : public Stmt {
+public:
+  Var name;
+  std::vector<Var> params;
+  std::vector<std::shared_ptr<Stmt>> body;
+  std::shared_ptr<Type> returnType;
+
+  FunctionStmt(Var name, std::vector<Var> params, std::vector<std::shared_ptr<Stmt>> body, std::shared_ptr<Type> returnType)
+    : Stmt(StmtKind::Function),
+      name(std::move(name)),
+      params(std::move(params)),
+      body(std::move(body)),
+      returnType(std::move(returnType)) {
+  }
+
+  bool operator==(const Stmt& other) const override {
+    if (kind != other.kind) {
+      return false;
+    }
+    const auto& otherFunc = static_cast<const FunctionStmt&>(other);
+
+    if (name != otherFunc.name) return false;
+    if (params != otherFunc.params) return false;
+
+    if (body.size() != otherFunc.body.size()) {
+      return false;
+    }
+
+    for (size_t i = 0; i < body.size(); i++) {
+      if (*body[i] != *otherFunc.body[i]) {
+        return false;
+      }
+    }
+
+    if (*returnType != *otherFunc.returnType) return false;
+
+    return true;
+  }
+};
+
+class ReturnStmt : public Stmt {
+public:
+  std::shared_ptr<Expr> expression;
+
+  explicit ReturnStmt(std::shared_ptr<Expr> expression)
+    : Stmt(StmtKind::Return), expression(std::move(expression)) {}
+
+  bool operator==(const Stmt& other) const override {
+    if (kind != other.kind) {
+      return false;
+    }
+
+    const auto& otherReturn = static_cast<const ReturnStmt&>(other);
+    return *expression == *otherReturn.expression;
   }
 };
 

@@ -46,15 +46,6 @@ public:
     std::cout << "Variable " << node.var.name << std::endl;
   }
 
-  void visitFunction(FunctionNode& node) {
-    printPrefix();
-    std::cout << "Function " << node.arg.name << std::endl;
-
-    isLastChild.push_back(true); // Body is the only child (last)
-    visit(*node.body);
-    isLastChild.pop_back();
-  }
-
   void visitApply(ApplyNode& node) {
     printPrefix();
     std::cout << "Apply" << std::endl;
@@ -99,6 +90,35 @@ public:
     std::cout << "Assign " << node.var.name << std::endl;
 
     isLastChild.push_back(true); // Expression is the only child
+    visit(*node.expression);
+    isLastChild.pop_back();
+  }
+
+  void visitFunction(FunctionStmt& node) {
+    printPrefix();
+    std::cout << "Function " << node.name.name << "(";
+
+    for (size_t i = 0; i < node.params.size(); ++i) {
+      std::cout << node.params[i].name;
+      if (i < node.params.size() - 1) {
+        std::cout << ", ";
+      }
+    }
+    std::cout << ")" << std::endl;
+
+    for (size_t i = 0; i < node.body.size(); i++) {
+      bool isLast = (i == node.body.size() - 1);
+      isLastChild.push_back(isLast);
+      visitStmt(*node.body[i]);
+      isLastChild.pop_back();
+    }
+  }
+
+  void visitReturn(ReturnStmt& node) {
+    printPrefix();
+    std::cout << "Return" << std::endl;
+
+    isLastChild.push_back(true);
     visit(*node.expression);
     isLastChild.pop_back();
   }
