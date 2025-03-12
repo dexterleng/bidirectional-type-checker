@@ -15,8 +15,9 @@ int main() {
           std::vector<std::shared_ptr<Stmt>>{
             std::make_shared<DeclareStmt>(
               Var(3),
-              std::make_shared<AddExpr>(
+              std::make_shared<BinaryExpr>(
                 std::make_shared<VariableExpr>(Var(1)),
+                BinaryOperator::Add,
                 std::make_shared<VariableExpr>(Var(2))
               )
             ),

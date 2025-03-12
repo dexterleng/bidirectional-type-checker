@@ -19,8 +19,8 @@ public:
         return static_cast<ImplClass*>(this)->visitVariable(static_cast<VariableExpr&>(expr), std::forward<Args>(args)...);
       case ExprKind::Apply:
         return static_cast<ImplClass*>(this)->visitApply(static_cast<ApplyExpr&>(expr), std::forward<Args>(args)...);
-      case ExprKind::Add:
-        return static_cast<ImplClass*>(this)->visitAdd(static_cast<AddExpr&>(expr), std::forward<Args>(args)...);
+      case ExprKind::Binary:
+        return static_cast<ImplClass*>(this)->visitBinary(static_cast<BinaryExpr&>(expr), std::forward<Args>(args)...);
       default:
         throw std::runtime_error("Unknown ExprKind");
     }

@@ -49,24 +49,24 @@ public:
     printPrefix();
     std::cout << "Apply" << std::endl;
 
-    isLastChild.push_back(false); // Function is not the last child
+    isLastChild.push_back(false);
     visit(*expr.function);
     isLastChild.pop_back();
 
-    isLastChild.push_back(true); // Argument is the last child
+    isLastChild.push_back(true);
     visit(*expr.argument);
     isLastChild.pop_back();
   }
 
-  void visitAdd(AddExpr& expr) {
+  void visitBinary(BinaryExpr& expr) {
     printPrefix();
-    std::cout << "Add" << std::endl;
+    std::cout << "Binary (" << toString(expr.op) << ")" << std::endl;
 
-    isLastChild.push_back(false); // Left is not the last child
+    isLastChild.push_back(false);
     visit(*expr.left);
     isLastChild.pop_back();
 
-    isLastChild.push_back(true); // Right is the last child
+    isLastChild.push_back(true);
     visit(*expr.right);
     isLastChild.pop_back();
   }
@@ -88,7 +88,7 @@ public:
     printPrefix();
     std::cout << "Declare " << stmt.var.name << std::endl;
 
-    isLastChild.push_back(true); // Expression is the only child
+    isLastChild.push_back(true);
     visit(*stmt.expression);
     isLastChild.pop_back();
   }

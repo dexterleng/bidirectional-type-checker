@@ -36,7 +36,7 @@ enum class ExprKind {
   Double,
   Variable,
   Apply,
-  Add
+  Binary
 };
 
 class Expr {
@@ -135,14 +135,33 @@ public:
   }
 };
 
-class AddExpr : public Expr {
+enum class BinaryOperator {
+  Add,
+  Minus,
+  And,
+  Or,
+};
+
+inline std::string toString(BinaryOperator op) {
+  switch (op) {
+    case BinaryOperator::Add: return "+";
+    case BinaryOperator::Minus: return "-";
+    case BinaryOperator::And: return "&&";
+    case BinaryOperator::Or: return "||";
+    default: return "Unknown BinaryOperator";
+  }
+}
+
+class BinaryExpr : public Expr {
 public:
   std::shared_ptr<Expr> left;
+  BinaryOperator op;
   std::shared_ptr<Expr> right;
 
-  AddExpr(std::shared_ptr<Expr> left, std::shared_ptr<Expr> right)
-    : Expr(ExprKind::Add),
+  BinaryExpr(std::shared_ptr<Expr> left, BinaryOperator op, std::shared_ptr<Expr> right)
+    : Expr(ExprKind::Binary),
       left(std::move(left)),
+      op(op),
       right(std::move(right)) {
   }
 
@@ -150,11 +169,11 @@ public:
     if (kind != other.kind) {
       return false;
     }
-    const auto& otherAdd = static_cast<const AddExpr&>(other);
+    const auto& otherBinary = static_cast<const BinaryExpr&>(other);
 
     // Compare left and right operands
-    auto leftEqual = *left == *otherAdd.left;
-    auto rightEqual = *right == *otherAdd.right;
+    auto leftEqual = *left == *otherBinary.left;
+    auto rightEqual = *right == *otherBinary.right;
     return leftEqual && rightEqual;
   }
 };

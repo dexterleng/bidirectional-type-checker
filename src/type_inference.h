@@ -101,10 +101,10 @@ private:
         substituteAst(*applyExpr.argument);
         break;
       }
-      case ExprKind::Add: {
-        auto& addExpr = static_cast<AddExpr&>(expr);
-        substituteAst(*addExpr.left);
-        substituteAst(*addExpr.right);
+      case ExprKind::Binary: {
+        auto& binaryExpr = static_cast<BinaryExpr&>(expr);
+        substituteAst(*binaryExpr.left);
+        substituteAst(*binaryExpr.right);
         break;
       }
       default:
@@ -295,10 +295,10 @@ private:
         check(*applyExpr.function, functionType);
         return returnType;
       }
-      case ExprKind::Add: {
-        auto& addExpr = static_cast<AddExpr&>(expr);
-        auto leftType = infer(*addExpr.left);
-        auto rightType = infer(*addExpr.right);
+      case ExprKind::Binary: {
+        auto& binaryExpr = static_cast<BinaryExpr&>(expr);
+        auto leftType = infer(*binaryExpr.left);
+        auto rightType = infer(*binaryExpr.right);
         auto constraint = std::make_unique<EqualTypeConstraint>(leftType, rightType);
         this->constraints.push_back(std::move(constraint));
         return leftType;
