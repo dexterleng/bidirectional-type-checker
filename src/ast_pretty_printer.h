@@ -30,22 +30,22 @@ public:
   }
 
   // Expression visitors
-  void visitInteger(IntegerExpr& expr) {
+  void visitIntegerExpr(IntegerExpr& expr) {
     printPrefix();
     std::cout << "Integer(" << expr.getValue() << ")" << std::endl;
   }
 
-  void visitDouble(DoubleExpr& expr) {
+  void visitDoubleExpr(DoubleExpr& expr) {
     printPrefix();
     std::cout << "Double(" << expr.getValue() << ")" << std::endl;
   }
 
-  void visitVariable(VariableExpr& expr) {
+  void visitVariableExpr(VariableExpr& expr) {
     printPrefix();
     std::cout << "Variable " << expr.var.name << std::endl;
   }
 
-  void visitApply(ApplyExpr& expr) {
+  void visitApplyExpr(ApplyExpr& expr) {
     printPrefix();
     std::cout << "Apply" << std::endl;
 
@@ -58,7 +58,7 @@ public:
     isLastChild.pop_back();
   }
 
-  void visitBinary(BinaryExpr& expr) {
+  void visitBinaryExpr(BinaryExpr& expr) {
     printPrefix();
     std::cout << "Binary (" << toString(expr.op) << ")" << std::endl;
 
@@ -72,7 +72,7 @@ public:
   }
 
   // Statement visitors
-  void visitBlock(BlockStmt& stmt) {
+  void visitBlockStmt(BlockStmt& stmt) {
     printPrefix();
     std::cout << "Block" << std::endl;
 
@@ -84,7 +84,7 @@ public:
     }
   }
 
-  void visitDeclare(DeclareStmt& stmt) {
+  void visitDeclareStmt(DeclareStmt& stmt) {
     printPrefix();
     std::cout << "Declare " << stmt.var.name << std::endl;
 
@@ -93,7 +93,7 @@ public:
     isLastChild.pop_back();
   }
 
-  void visitFunction(FunctionStmt& stmt) {
+  void visitFunctionStmt(FunctionStmt& stmt) {
     printPrefix();
     std::cout << "Function " << stmt.name.name << "(";
 
@@ -110,7 +110,7 @@ public:
     isLastChild.pop_back();
   }
 
-  void visitReturn(ReturnStmt& stmt) {
+  void visitReturnStmt(ReturnStmt& stmt) {
     printPrefix();
     std::cout << "Return" << std::endl;
 
@@ -119,7 +119,7 @@ public:
     isLastChild.pop_back();
   }
 
-  void visitIf(IfStmt& stmt) {
+  void visitIfStmt(IfStmt& stmt) {
     printPrefix();
     std::cout << "If" << std::endl;
 

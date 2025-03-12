@@ -12,15 +12,15 @@ public:
   ExprRetTy visit(Expr& expr, Args... args) {
     switch (expr.kind) {
       case ExprKind::Integer:
-        return static_cast<ImplClass*>(this)->visitInteger(static_cast<IntegerExpr&>(expr), std::forward<Args>(args)...);
+        return static_cast<ImplClass*>(this)->visitIntegerExpr(static_cast<IntegerExpr&>(expr), std::forward<Args>(args)...);
       case ExprKind::Double:
-        return static_cast<ImplClass*>(this)->visitDouble(static_cast<DoubleExpr&>(expr), std::forward<Args>(args)...);
+        return static_cast<ImplClass*>(this)->visitDoubleExpr(static_cast<DoubleExpr&>(expr), std::forward<Args>(args)...);
       case ExprKind::Variable:
-        return static_cast<ImplClass*>(this)->visitVariable(static_cast<VariableExpr&>(expr), std::forward<Args>(args)...);
+        return static_cast<ImplClass*>(this)->visitVariableExpr(static_cast<VariableExpr&>(expr), std::forward<Args>(args)...);
       case ExprKind::Apply:
-        return static_cast<ImplClass*>(this)->visitApply(static_cast<ApplyExpr&>(expr), std::forward<Args>(args)...);
+        return static_cast<ImplClass*>(this)->visitApplyExpr(static_cast<ApplyExpr&>(expr), std::forward<Args>(args)...);
       case ExprKind::Binary:
-        return static_cast<ImplClass*>(this)->visitBinary(static_cast<BinaryExpr&>(expr), std::forward<Args>(args)...);
+        return static_cast<ImplClass*>(this)->visitBinaryExpr(static_cast<BinaryExpr&>(expr), std::forward<Args>(args)...);
       default:
         throw std::runtime_error("Unknown ExprKind");
     }
@@ -29,15 +29,15 @@ public:
   StmtRetTy visit(Stmt& stmt, Args... args) {
     switch (stmt.kind) {
       case StmtKind::Block:
-        return static_cast<ImplClass*>(this)->visitBlock(static_cast<BlockStmt&>(stmt), std::forward<Args>(args)...);
+        return static_cast<ImplClass*>(this)->visitBlockStmt(static_cast<BlockStmt&>(stmt), std::forward<Args>(args)...);
       case StmtKind::Declare:
-        return static_cast<ImplClass*>(this)->visitDeclare(static_cast<DeclareStmt&>(stmt), std::forward<Args>(args)...);
+        return static_cast<ImplClass*>(this)->visitDeclareStmt(static_cast<DeclareStmt&>(stmt), std::forward<Args>(args)...);
       case StmtKind::Function:
-        return static_cast<ImplClass*>(this)->visitFunction(static_cast<FunctionStmt&>(stmt), std::forward<Args>(args)...);
+        return static_cast<ImplClass*>(this)->visitFunctionStmt(static_cast<FunctionStmt&>(stmt), std::forward<Args>(args)...);
       case StmtKind::Return:
-        return static_cast<ImplClass*>(this)->visitReturn(static_cast<ReturnStmt&>(stmt), std::forward<Args>(args)...);
+        return static_cast<ImplClass*>(this)->visitReturnStmt(static_cast<ReturnStmt&>(stmt), std::forward<Args>(args)...);
       case StmtKind::If:
-        return static_cast<ImplClass*>(this)->visitIf(static_cast<IfStmt&>(stmt), std::forward<Args>(args)...);
+        return static_cast<ImplClass*>(this)->visitIfStmt(static_cast<IfStmt&>(stmt), std::forward<Args>(args)...);
       default:
         throw std::runtime_error("Unknown StmtKind");
     }
