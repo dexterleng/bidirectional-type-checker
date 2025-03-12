@@ -1,18 +1,16 @@
 #ifndef STMT_H
 #define STMT_H
-#include <utility>
 
 #include "expr.h"
 
-// Enum for statement nodes
 enum class StmtKind {
   Block,
   Assign,
   Function,
-  Return
+  Return,
+  If
 };
 
-// Base class for statements
 class Stmt {
 public:
   StmtKind kind;
@@ -27,7 +25,6 @@ public:
   bool operator!=(const Stmt& other) const = default;
 };
 
-// Block statement containing a list of statements
 class BlockStmt : public Stmt {
 public:
   std::vector<std::shared_ptr<Stmt>> statements;
@@ -43,12 +40,10 @@ public:
 
     const auto& otherBlock = static_cast<const BlockStmt&>(other);
 
-    // Check if both blocks have the same number of statements
     if (statements.size() != otherBlock.statements.size()) {
       return false;
     }
 
-    // Compare each statement
     for (size_t i = 0; i < statements.size(); i++) {
       if (*statements[i] != *otherBlock.statements[i]) {
         return false;
@@ -59,7 +54,6 @@ public:
   }
 };
 
-// Assignment statement (var = expr)
 class AssignStmt : public Stmt {
 public:
   Var var;
@@ -76,9 +70,8 @@ public:
     }
 
     const auto& otherAssign = static_cast<const AssignStmt&>(other);
-
-    // Compare variable and expression
-    return var == otherAssign.var && *expression == *otherAssign.expression;
+    return var == otherAssign.var &&
+      *expression == *otherAssign.expression;
   }
 };
 
@@ -124,6 +117,48 @@ public:
 
     const auto& otherReturn = static_cast<const ReturnStmt&>(other);
     return *expression == *otherReturn.expression;
+  }
+};
+
+class IfStmt : public Stmt {
+public:
+  std::shared_ptr<Expr> condition;
+  std::shared_ptr<Stmt> thenBranch;
+  std::optional<std::shared_ptr<Stmt>> elseBranch;
+
+  IfStmt(std::shared_ptr<Expr> condition, std::shared_ptr<Stmt> thenBranch)
+    : Stmt(StmtKind::If),
+      condition(std::move(condition)),
+      thenBranch(std::move(thenBranch)),
+      elseBranch(std::nullopt) {}
+
+  IfStmt(std::shared_ptr<Expr> condition,
+         std::shared_ptr<Stmt> thenBranch,
+         std::shared_ptr<Stmt> elseBranch)
+    : Stmt(StmtKind::If),
+      condition(std::move(condition)),
+      thenBranch(std::move(thenBranch)),
+      elseBranch(std::move(elseBranch)) {}
+
+  bool operator==(const Stmt& other) const override {
+    if (kind != other.kind) {
+      return false;
+    }
+
+    const auto& otherIf = static_cast<const IfStmt&>(other);
+    if (*condition != *otherIf.condition || *thenBranch != *otherIf.thenBranch) {
+      return false;
+    }
+
+    if (elseBranch.has_value() != otherIf.elseBranch.has_value()) {
+      return false;
+    }
+
+    if (elseBranch.has_value()) {
+      return **elseBranch == **otherIf.elseBranch;
+    }
+
+    return true;
   }
 };
 

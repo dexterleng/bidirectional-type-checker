@@ -119,6 +119,40 @@ public:
     isLastChild.pop_back();
   }
 
+  void visitIf(IfStmt& node) {
+    printPrefix();
+    std::cout << "If" << std::endl;
+
+    // Print condition
+    isLastChild.push_back(false); // Condition is not the last child
+    printPrefix();
+    std::cout << "Condition" << std::endl;
+    isLastChild.push_back(true);  // Condition expression is the last in this branch
+    visit(*node.condition);
+    isLastChild.pop_back();
+    isLastChild.pop_back();
+
+    // Print then branch
+    isLastChild.push_back(!node.elseBranch.has_value()); // Then branch is the last child only if no else branch
+    printPrefix();
+    std::cout << "Then" << std::endl;
+    isLastChild.push_back(true);  // Then body is the last in this branch
+    visit(*node.thenBranch);
+    isLastChild.pop_back();
+    isLastChild.pop_back();
+
+    // Print else branch if it exists
+    if (node.elseBranch.has_value()) {
+      isLastChild.push_back(true); // Else branch is the last child
+      printPrefix();
+      std::cout << "Else" << std::endl;
+      isLastChild.push_back(true); // Else body is the last in this branch
+      visit(**node.elseBranch);
+      isLastChild.pop_back();
+      isLastChild.pop_back();
+    }
+  }
+
 private:
   void printPrefix() {
     for (size_t i = 0; i < isLastChild.size(); i++) {

@@ -36,6 +36,8 @@ public:
         return static_cast<ImplClass*>(this)->visitFunction(static_cast<FunctionStmt&>(node), std::forward<Args>(args)...);
       case StmtKind::Return:
         return static_cast<ImplClass*>(this)->visitReturn(static_cast<ReturnStmt&>(node), std::forward<Args>(args)...);
+      case StmtKind::If:
+        return static_cast<ImplClass*>(this)->visitIf(static_cast<IfStmt&>(node), std::forward<Args>(args)...);
       default:
         throw std::runtime_error("Unknown StmtKind");
     }

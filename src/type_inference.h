@@ -141,6 +141,15 @@ private:
         substituteAst(*returnStmt.expression);
         break;
       }
+      case StmtKind::If: {
+        auto& ifStmt = static_cast<IfStmt&>(node);
+        substituteAst(*ifStmt.condition);
+        substituteAst(*ifStmt.thenBranch);
+        if (ifStmt.elseBranch.has_value()) {
+          substituteAst(**ifStmt.elseBranch);
+        }
+        break;
+      }
       default:
         throw std::runtime_error("Unknown StmtKind");
     }
@@ -351,6 +360,18 @@ private:
         check(*returnStmt.expression, enclosingFunction->returnType);
         return false;
       }
+      case StmtKind::If: {
+        auto& ifStmt = static_cast<IfStmt&>(node);
+        auto conditionType = infer(*ifStmt.condition);
+        auto thenFallsThrough = infer(*ifStmt.thenBranch);
+        // If there's no else branch, the if statement always falls through
+        if (!ifStmt.elseBranch.has_value()) {
+          return true;
+        }
+        auto elseFallsThrough = infer(**ifStmt.elseBranch);
+        // The if-else falls through if any branch can fall through
+        return thenFallsThrough || elseFallsThrough;
+      }
       default:
         throw std::runtime_error("Unknown StmtKind");
     }
@@ -374,20 +395,6 @@ private:
     if (node.kind == ExprKind::Double && type->kind == TypeKind::Double) {
       return;
     }
-
-    // if (node.kind == ExprKind::Function && type->kind == TypeKind::Function) {
-    //   auto& functionNode = static_cast<FunctionNode&>(node);
-    //   auto functionType = static_pointer_cast<FunctionType>(type);
-    //
-    //   beginScope();
-    //   declare(functionNode.arg);
-    //   define(functionNode.arg, functionType->from);
-    //   check(*functionNode.body, functionType->to);
-    //   endScope();
-    //
-    //   functionNode.arg.type = functionType->from;
-    //   return;
-    // }
 
     auto inferredType = infer(node);
     auto constraint = std::make_unique<EqualTypeConstraint>(type, inferredType);
