@@ -53,7 +53,8 @@ private:
     switch (ty->kind) {
       case TypeKind::Void:
       case TypeKind::Integer:
-      case TypeKind::Double: {
+      case TypeKind::Double:
+      case TypeKind::Boolean: {
         return ty;
       }
       case TypeKind::Variable: {
@@ -203,6 +204,10 @@ private:
       return;
     }
 
+    if (lhsType->kind == TypeKind::Boolean && rhsType->kind == TypeKind::Boolean) {
+      return;
+    }
+
     if (lhsType->kind == TypeKind::Function && rhsType->kind == TypeKind::Function) {
       auto lhsFunctionType = static_pointer_cast<FunctionType>(lhsType);
       auto rhsFunctionType = static_pointer_cast<FunctionType>(rhsType);
@@ -316,23 +321,46 @@ private:
         auto& binaryExpr = static_cast<BinaryExpr&>(expr);
         auto leftType = infer(*binaryExpr.left);
         auto rightType = infer(*binaryExpr.right);
-        auto constraint = std::make_unique<EqualTypeConstraint>(leftType, rightType);
-        this->constraints.push_back(std::move(constraint));
-        return leftType;
-        // FIXME: check that both are either Int Int or Double Double
+        switch (binaryExpr.op) {
+          case BinaryOperator::Add:
+          case BinaryOperator::Minus: {
+            if (leftType->kind == TypeKind::Integer && rightType->kind == TypeKind::Integer) {
+              return leftType;
+            }
+            if (leftType->kind == TypeKind::Double && rightType->kind == TypeKind::Double) {
+              return leftType;
+            }
+            throw std::runtime_error("Invalid binary operand types");
+          }
+          case BinaryOperator::And:
+          case BinaryOperator::Or:
+            if (leftType->kind == TypeKind::Boolean && rightType->kind == TypeKind::Boolean) {
+              return leftType;
+            }
+            throw std::runtime_error("Invalid binary operand types");
+          default:
+            throw std::runtime_error("Unknown BinaryOperator");
+        }
       }
       case ExprKind::Unary: {
         auto& unary = static_cast<UnaryExpr&>(expr);
         auto operandType = infer(*unary.operand);
-        return operandType;
-        // FIXME: check this after substitution.
-        // if (op == UnaryOperator::Not) {
-        //   this->constraints.push_back(
-        //     std::make_unique<EqualTypeConstraint>(operandType, std::make_shared<BoolType>())
-        //   );
-        // } else if (op == UnaryOperator::Negate) {
-        //   // can be either int or double
-        // }
+        switch (unary.op) {
+          case UnaryOperator::Not: {
+            if (operandType->kind == TypeKind::Boolean) {
+              return operandType;
+            }
+            throw std::runtime_error("Invalid unary operand type");
+          }
+          case UnaryOperator::Negate: {
+            if (operandType->kind == TypeKind::Integer || operandType->kind == TypeKind::Double) {
+              return operandType;
+            }
+            throw std::runtime_error("Invalid unary operand type");
+          }
+          default:
+            throw std::runtime_error("Unknown UnaryOperator");
+        }
       }
       default:
         throw std::runtime_error("Unknown ExprKind");
@@ -401,6 +429,9 @@ private:
       case StmtKind::If: {
         auto& ifStmt = static_cast<IfStmt&>(stmt);
         auto conditionType = infer(*ifStmt.condition);
+        if (conditionType->kind != TypeKind::Boolean) {
+          throw std::runtime_error("If condition must be a boolean");
+        }
         auto thenFallsThrough = infer(*ifStmt.thenBranch);
         // If there's no else branch, the if statement always falls through
         if (!ifStmt.elseBranch.has_value()) {

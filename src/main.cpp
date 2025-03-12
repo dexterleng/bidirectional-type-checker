@@ -29,9 +29,15 @@ int main() {
                 std::make_shared<VariableExpr>(Var(3))
               )
             ),
+            std::make_shared<DeclareStmt>( // var 4 = var 2 + var 3
+              Var(10),
+              std::make_shared<UnaryExpr>(UnaryOperator::Not , std::make_shared<BoolExpr>(true))
+            ),
             std::make_shared<IfStmt>(
               // std::make_shared<IntegerExpr>("3"), // this should be a bool
-              std::make_shared<UnaryExpr>(UnaryOperator::Not , std::make_shared<BoolExpr>(true)),
+              // std::make_shared<UnaryExpr>(UnaryOperator::Not , std::make_shared<BoolExpr>(true)),
+                // std::make_shared<UnaryExpr>(UnaryOperator::Negate , std::make_shared<IntegerExpr>("3")),
+                std::make_shared<UnaryExpr>(UnaryOperator::Not, std::make_shared<VariableExpr>(Var(10))),
                 std::make_shared<BlockStmt>(
                   std::vector<std::shared_ptr<Stmt>>{
                     std::make_shared<DeclareStmt>(Var(4), std::make_shared<IntegerExpr>("3")), // shadowing
