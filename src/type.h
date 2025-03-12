@@ -86,13 +86,13 @@ public:
 
 class FunctionType : public Type {
 public:
-  std::shared_ptr<Type> from;
-  std::shared_ptr<Type> to;
+  std::vector<std::shared_ptr<Type>> parameters;
+  std::shared_ptr<Type> ret;
 
-  FunctionType(std::shared_ptr<Type> from, std::shared_ptr<Type> to)
+  FunctionType(std::vector<std::shared_ptr<Type>> parameters, std::shared_ptr<Type> ret)
     : Type(TypeKind::Function),
-      from(std::move(from)),
-      to(std::move(to)) {
+      parameters(std::move(parameters)),
+      ret(std::move(ret)) {
   }
 
   bool operator==(const Type &other) const override {
@@ -100,13 +100,32 @@ public:
       return false;
     }
     auto& otherType = static_cast<const FunctionType&>(other);
-    auto fromEqual = *from == *(otherType.from);
-    auto toEqual = *to == *(otherType.to);
-    return fromEqual && toEqual;
+
+    if (parameters.size() != otherType.parameters.size()) {
+      return false;
+    }
+
+    for (size_t i = 0; i < parameters.size(); i++) {
+      if (*parameters[i] != *(otherType.parameters[i])) {
+        return false;
+      }
+    }
+
+    return *ret == *(otherType.ret);
   }
 
   std::string toString() const override {
-    return "FunctionType(" + from->toString() + " -> " + to->toString() + ")";
+    std::string result = "FunctionType(";
+
+    for (size_t i = 0; i < parameters.size(); i++) {
+      if (i > 0) {
+        result += ", ";
+      }
+      result += parameters[i]->toString();
+    }
+
+    result += " -> " + ret->toString() + ")";
+    return result;
   }
 };
 

@@ -74,10 +74,14 @@ private:
         }
       }
       case TypeKind::Function: {
-        auto funType = static_pointer_cast<FunctionType>(ty);
-        auto argType = substitute(funType->from);
-        auto retType = substitute(funType->to);
-        return std::make_shared<FunctionType>(argType, retType);
+        auto functionType = static_pointer_cast<FunctionType>(ty);
+
+        std::vector<std::shared_ptr<Type>> paramTypes;
+        for (const auto & parameter : functionType->parameters) {
+          paramTypes.push_back(substitute(parameter));
+        }
+        auto retType = substitute(functionType->ret);
+        return std::make_shared<FunctionType>(paramTypes, retType);
       }
       default:
         throw std::runtime_error("Unhandled TypeKind");
@@ -100,7 +104,9 @@ private:
       case ExprKind::Apply: {
         auto& applyExpr = static_cast<ApplyExpr&>(expr);
         substituteAst(*applyExpr.function);
-        substituteAst(*applyExpr.argument);
+        for (auto& arg : applyExpr.arguments) {
+          substituteAst(*arg);
+        }
         break;
       }
       case ExprKind::Binary: {
@@ -211,8 +217,13 @@ private:
     if (lhsType->kind == TypeKind::Function && rhsType->kind == TypeKind::Function) {
       auto lhsFunctionType = static_pointer_cast<FunctionType>(lhsType);
       auto rhsFunctionType = static_pointer_cast<FunctionType>(rhsType);
-      _solveEqualTypeConstraint(lhsFunctionType->from, rhsFunctionType->from);
-      _solveEqualTypeConstraint(lhsFunctionType->to, rhsFunctionType->to);
+      if (lhsFunctionType->parameters.size() != rhsFunctionType->parameters.size()) {
+        throw TypeNotEqualError(*lhsType, *rhsType);
+      }
+      for (size_t i = 0; i < lhsFunctionType->parameters.size(); i++) {
+        _solveEqualTypeConstraint(lhsFunctionType->parameters[i], rhsFunctionType->parameters[i]);
+      }
+      _solveEqualTypeConstraint(lhsFunctionType->ret, rhsFunctionType->ret);
       return;
     }
 
@@ -250,8 +261,13 @@ private:
         return varType->typeVar == var;
       }
       case TypeKind::Function: {
-        auto funType = static_pointer_cast<FunctionType>(type);
-        return hasTypeVar(funType->from, var) || hasTypeVar(funType->to, var);
+        auto functionType = static_pointer_cast<FunctionType>(type);
+        for (const auto & parameter : functionType->parameters) {
+          if (hasTypeVar(parameter, var)) {
+            return true;
+          }
+        }
+        return hasTypeVar(functionType->ret, var);
       }
       default:
         throw std::runtime_error("Unknown TypeKind in hasTypeVar");
@@ -276,10 +292,14 @@ private:
         }
       }
       case TypeKind::Function: {
-        auto type = static_pointer_cast<FunctionType>(_type);
-        auto fromType = normalizeType(type->from);
-        auto toType = normalizeType(type->to);
-        return std::make_shared<FunctionType>(fromType, toType);
+        auto functionType = static_pointer_cast<FunctionType>(_type);
+        std::vector<std::shared_ptr<Type>> paramTypes;
+        for (auto& param : functionType->parameters) {
+          auto resolvedParam = normalizeType(param);
+          paramTypes.push_back(resolvedParam);
+        }
+        auto returnType = normalizeType(functionType->ret);
+        return std::make_shared<FunctionType>(paramTypes, returnType);
       }
       default:
         throw std::runtime_error("Unknown TypeKind");
@@ -310,11 +330,16 @@ private:
       }
       case ExprKind::Apply: {
         auto& applyExpr = static_cast<ApplyExpr&>(expr);
-        // construct a function type to check against the real function
-        auto argType = infer(*applyExpr.argument);
+
+        std::vector<std::shared_ptr<Type>> argumentTypes;
+        for (auto& arg : applyExpr.arguments) {
+          auto argType = infer(*arg);
+          argumentTypes.push_back(argType);
+        }
         auto returnType = std::make_shared<VariableType>(freshTypeVar());
-        auto functionType = std::make_shared<FunctionType>(argType, returnType);
-        check(*applyExpr.function, functionType);
+        auto expectedFunctionType = std::make_shared<FunctionType>(argumentTypes, returnType);
+
+        check(*applyExpr.function, expectedFunctionType);
         return returnType;
       }
       case ExprKind::Binary: {
@@ -401,6 +426,17 @@ private:
       case StmtKind::Function: {
         auto& funStmt = static_cast<FunctionStmt&>(stmt);
 
+        // declare and define first to allow recursion.
+        declare(funStmt.name);
+
+        std::vector<std::shared_ptr<Type>> paramTypes;
+        paramTypes.reserve(funStmt.params.size());
+        for (const auto& param : funStmt.params) {
+          paramTypes.push_back(param.type.value());
+        }
+        auto functionType = std::make_shared<FunctionType>(paramTypes, funStmt.returnType);
+        define(funStmt.name, functionType);
+
         beginScope();
         auto prevEnclosingFunction = enclosingFunction;
         enclosingFunction = &funStmt;
@@ -410,8 +446,9 @@ private:
           define(param, param.type.value());
         }
 
-        // Check if function falls through without returning
+        // All return statements in the body will be checked against the enclosing function's return type
         auto bodyFallsThrough = infer(*funStmt.body);
+        // If the function body falls through, it must be a Void return type.
         if (bodyFallsThrough && funStmt.returnType->kind != TypeKind::Void) {
           throw TypeNotEqualError(*funStmt.returnType, VoidType());
         }

@@ -56,6 +56,17 @@ int main() {
             std::make_shared<ReturnStmt>(std::make_shared<VariableExpr>(Var(4)))
           }
         )
+      ),
+      std::make_shared<DeclareStmt>(
+        Var(100),
+        std::make_shared<ApplyExpr>(
+          std::make_shared<VariableExpr>(Var(0)),
+          std::vector<std::shared_ptr<Expr>>{
+            std::make_shared<IntegerExpr>("3"),
+            std::make_shared<IntegerExpr>("3")
+            // std::make_shared<DoubleExpr>("3")
+          }
+        )
       )
     }
   );

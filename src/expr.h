@@ -1,6 +1,8 @@
 #ifndef EXPR_H
 #define EXPR_H
 
+#include <utility>
+
 #include "type.h"
 
 using VariableName = uint32_t;
@@ -119,9 +121,9 @@ class VariableExpr : public Expr {
 public:
   Var var;
 
-  explicit VariableExpr(const Var &var)
+  explicit VariableExpr(Var var)
     : Expr(ExprKind::Variable),
-      var(var) {
+      var(std::move(var)) {
   }
 
   bool operator==(const Expr& other) const override {
@@ -136,12 +138,12 @@ public:
 class ApplyExpr : public Expr {
 public:
   std::shared_ptr<Expr> function;
-  std::shared_ptr<Expr> argument;
+  std::vector<std::shared_ptr<Expr>> arguments;
 
-  ApplyExpr(std::shared_ptr<Expr> function, std::shared_ptr<Expr> argument)
+  ApplyExpr(std::shared_ptr<Expr> function, std::vector<std::shared_ptr<Expr>> arguments)
     : Expr(ExprKind::Apply),
       function(std::move(function)),
-      argument(std::move(argument)) {
+      arguments(std::move(arguments)) {
   }
 
   bool operator==(const Expr& other) const override {
@@ -150,10 +152,19 @@ public:
     }
     const auto& otherApply = static_cast<const ApplyExpr&>(other);
 
-    // Compare function and argument
-    auto funcEqual = *function == *otherApply.function;
-    auto argEqual = *argument == *otherApply.argument;
-    return funcEqual && argEqual;
+    if (*function != *otherApply.function) return false;
+
+    if (arguments.size() != otherApply.arguments.size()) {
+      return false;
+    }
+
+    for (size_t i = 0; i < arguments.size(); i++) {
+      if (*arguments[i] != *otherApply.arguments[i]) {
+        return false;
+      }
+    }
+
+    return true;
   }
 };
 

@@ -55,11 +55,22 @@ public:
     std::cout << "Apply" << std::endl;
 
     isLastChild.push_back(false);
+    printPrefix();
+    std::cout << "Function" << std::endl;
+    isLastChild.push_back(false);
     visit(*expr.function);
+    isLastChild.pop_back();
     isLastChild.pop_back();
 
     isLastChild.push_back(true);
-    visit(*expr.argument);
+    printPrefix();
+    std::cout << "Arguments" << std::endl;
+    for (size_t i = 0; i < expr.arguments.size(); i++) {
+      bool isLast = (i == expr.arguments.size() - 1);
+      isLastChild.push_back(isLast);
+      visit(*expr.arguments[i]);
+      isLastChild.pop_back();
+    }
     isLastChild.pop_back();
   }
 
