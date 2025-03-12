@@ -6,24 +6,24 @@
 class TypeInferenceTest : public ::testing::Test {
 protected:
     // Helper methods to create AST nodes more easily
-    std::shared_ptr<IntegerNode> makeInt(const std::string& value) {
-        return std::make_shared<IntegerNode>(value);
+    std::shared_ptr<IntegerExpr> makeInt(const std::string& value) {
+        return std::make_shared<IntegerExpr>(value);
     }
 
-    std::shared_ptr<DoubleNode> makeDouble(const std::string& value) {
-        return std::make_shared<DoubleNode>(value);
+    std::shared_ptr<DoubleExpr> makeDouble(const std::string& value) {
+        return std::make_shared<DoubleExpr>(value);
     }
 
-    std::shared_ptr<VariableNode> makeVar(Var var) {
-        return std::make_shared<VariableNode>(var);
+    std::shared_ptr<VariableExpr> makeVar(Var var) {
+        return std::make_shared<VariableExpr>(var);
     }
 
     std::shared_ptr<FunctionNode> makeFun(Var arg, std::shared_ptr<Expr> body) {
         return std::make_shared<FunctionNode>(arg, std::move(body));
     }
 
-    std::shared_ptr<ApplyNode> makeApp(std::shared_ptr<Expr> function, std::shared_ptr<Expr> argument) {
-        return std::make_shared<ApplyNode>(std::move(function), std::move(argument));
+    std::shared_ptr<ApplyExpr> makeApp(std::shared_ptr<Expr> function, std::shared_ptr<Expr> argument) {
+        return std::make_shared<ApplyExpr>(std::move(function), std::move(argument));
     }
 
     std::shared_ptr<VariableType> makeVariableType(TypeVar typeVar) {

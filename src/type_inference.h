@@ -34,18 +34,18 @@ public:
 
   TypeInference() = default;
 
-  void perform(Stmt& node) {
-    infer(node);
+  void perform(Stmt& stmt) {
+    infer(stmt);
     solveConstraints();
-    substituteAst(node);
+    substituteAst(stmt);
   }
 
   // remove?
-  void perform(Expr& node) {
-    auto type = infer(node);
+  void perform(Expr& expr) {
+    auto type = infer(expr);
     solveConstraints();
     substitute(type);
-    substituteAst(node);
+    substituteAst(expr);
   }
 
 private:
@@ -83,52 +83,52 @@ private:
     }
   }
 
-  void substituteAst(Expr& node) {
-    switch (node.kind) {
+  void substituteAst(Expr& expr) {
+    switch (expr.kind) {
       case ExprKind::Integer:
       case ExprKind::Double: {
         break;
       }
       case ExprKind::Variable: {
-        auto& varNode = static_cast<VariableNode&>(node);
-        auto substitutedType = substitute(varNode.var.type.value());
-        varNode.var.type = substitutedType;
+        auto& varExpr = static_cast<VariableExpr&>(expr);
+        auto substitutedType = substitute(varExpr.var.type.value());
+        varExpr.var.type = substitutedType;
         break;
       }
       case ExprKind::Apply: {
-        auto& applyNode = static_cast<ApplyNode&>(node);
-        substituteAst(*applyNode.function);
-        substituteAst(*applyNode.argument);
+        auto& applyExpr = static_cast<ApplyExpr&>(expr);
+        substituteAst(*applyExpr.function);
+        substituteAst(*applyExpr.argument);
         break;
       }
       case ExprKind::Add: {
-        auto& addNode = static_cast<AddNode&>(node);
-        substituteAst(*addNode.left);
-        substituteAst(*addNode.right);
+        auto& addExpr = static_cast<AddExpr&>(expr);
+        substituteAst(*addExpr.left);
+        substituteAst(*addExpr.right);
         break;
       }
       default:
-        throw std::runtime_error("Unknown ASTNodeKind in substituteAst");
+        throw std::runtime_error("Unknown ExprKind");
     }
   }
 
-  void substituteAst(Stmt& node) {
-    switch (node.kind) {
+  void substituteAst(Stmt& stmt) {
+    switch (stmt.kind) {
       case StmtKind::Block: {
-        auto& block = static_cast<BlockStmt&>(node);
+        auto& block = static_cast<BlockStmt&>(stmt);
         for (auto& stmt : block.statements) {
           substituteAst(*stmt);
         }
         break;
       }
       case StmtKind::Declare: {
-        auto& declStmt = static_cast<DeclareStmt&>(node);
+        auto& declStmt = static_cast<DeclareStmt&>(stmt);
         auto argType = substitute(declStmt.var.type.value());
         declStmt.var.type = argType;
         break;
       }
       case StmtKind::Function: {
-        auto& funStmt = static_cast<FunctionStmt&>(node);
+        auto& funStmt = static_cast<FunctionStmt&>(stmt);
         for (auto& param : funStmt.params) {
           auto paramType = substitute(param.type.value());
           param.type = paramType;
@@ -137,12 +137,12 @@ private:
         break;
       }
       case StmtKind::Return: {
-        auto& returnStmt = static_cast<ReturnStmt&>(node);
+        auto& returnStmt = static_cast<ReturnStmt&>(stmt);
         substituteAst(*returnStmt.expression);
         break;
       }
       case StmtKind::If: {
-        auto& ifStmt = static_cast<IfStmt&>(node);
+        auto& ifStmt = static_cast<IfStmt&>(stmt);
         substituteAst(*ifStmt.condition);
         substituteAst(*ifStmt.thenBranch);
         if (ifStmt.elseBranch.has_value()) {
@@ -271,9 +271,9 @@ private:
    * Infer
    */
   std::shared_ptr<Type> infer(
-    Expr& node
+    Expr& expr
   ) {
-    switch (node.kind) {
+    switch (expr.kind) {
       case ExprKind::Integer: {
         return std::make_shared<IntegerType>();
       }
@@ -281,38 +281,38 @@ private:
         return std::make_shared<DoubleType>();
       }
       case ExprKind::Variable: {
-        auto& varNode = static_cast<VariableNode&>(node);
-        auto type = lookup(varNode.var);
-        varNode.var.type = type;
+        auto& varExpr = static_cast<VariableExpr&>(expr);
+        auto type = lookup(varExpr.var);
+        varExpr.var.type = type;
         return type;
       }
       case ExprKind::Apply: {
-        auto& applyNode = static_cast<ApplyNode&>(node);
+        auto& applyExpr = static_cast<ApplyExpr&>(expr);
         // construct a function type to check against the real function
-        auto argType = infer(*applyNode.argument);
+        auto argType = infer(*applyExpr.argument);
         auto returnType = std::make_shared<VariableType>(freshTypeVar());
         auto functionType = std::make_shared<FunctionType>(argType, returnType);
-        check(*applyNode.function, functionType);
+        check(*applyExpr.function, functionType);
         return returnType;
       }
       case ExprKind::Add: {
-        auto& addNode = static_cast<AddNode&>(node);
-        auto leftType = infer(*addNode.left);
-        auto rightType = infer(*addNode.right);
+        auto& addExpr = static_cast<AddExpr&>(expr);
+        auto leftType = infer(*addExpr.left);
+        auto rightType = infer(*addExpr.right);
         auto constraint = std::make_unique<EqualTypeConstraint>(leftType, rightType);
         this->constraints.push_back(std::move(constraint));
         return leftType;
       }
       default:
-        throw std::runtime_error("Unknown ASTNodeKind");
+        throw std::runtime_error("Unknown ExprKind");
     }
   }
 
   using FallsThrough = bool;
-  FallsThrough infer(Stmt& node) {
-    switch (node.kind) {
+  FallsThrough infer(Stmt& stmt) {
+    switch (stmt.kind) {
       case StmtKind::Block: {
-        auto& block = static_cast<BlockStmt&>(node);
+        auto& block = static_cast<BlockStmt&>(stmt);
         beginScope();
         auto fallsThrough = true;
         for (auto& stmt : block.statements) {
@@ -325,7 +325,7 @@ private:
         return fallsThrough;
       }
       case StmtKind::Declare: {
-        auto& declStmt = static_cast<DeclareStmt&>(node);
+        auto& declStmt = static_cast<DeclareStmt&>(stmt);
         declare(declStmt.var);
         auto exprType = infer(*declStmt.expression);
         define(declStmt.var, exprType);
@@ -333,7 +333,7 @@ private:
         return true;
       }
       case StmtKind::Function: {
-        auto& funStmt = static_cast<FunctionStmt&>(node);
+        auto& funStmt = static_cast<FunctionStmt&>(stmt);
 
         beginScope();
         auto prevEnclosingFunction = enclosingFunction;
@@ -356,12 +356,12 @@ private:
         return false;
       }
       case StmtKind::Return: {
-        auto& returnStmt = static_cast<ReturnStmt&>(node);
+        auto& returnStmt = static_cast<ReturnStmt&>(stmt);
         check(*returnStmt.expression, enclosingFunction->returnType);
         return false;
       }
       case StmtKind::If: {
-        auto& ifStmt = static_cast<IfStmt&>(node);
+        auto& ifStmt = static_cast<IfStmt&>(stmt);
         auto conditionType = infer(*ifStmt.condition);
         auto thenFallsThrough = infer(*ifStmt.thenBranch);
         // If there's no else branch, the if statement always falls through
@@ -385,18 +385,18 @@ private:
    * Check
    */
   void check(
-    Expr& node,
+    Expr& expr,
     const std::shared_ptr<Type>& type
   ) {
-    if (node.kind == ExprKind::Integer && type->kind == TypeKind::Integer) {
+    if (expr.kind == ExprKind::Integer && type->kind == TypeKind::Integer) {
       return;
     }
 
-    if (node.kind == ExprKind::Double && type->kind == TypeKind::Double) {
+    if (expr.kind == ExprKind::Double && type->kind == TypeKind::Double) {
       return;
     }
 
-    auto inferredType = infer(node);
+    auto inferredType = infer(expr);
     auto constraint = std::make_unique<EqualTypeConstraint>(type, inferredType);
     this->constraints.push_back(std::move(constraint));
   }

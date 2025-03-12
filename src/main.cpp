@@ -15,28 +15,28 @@ int main() {
           std::vector<std::shared_ptr<Stmt>>{
             std::make_shared<DeclareStmt>(
               Var(3),
-              std::make_shared<AddNode>(
-                std::make_shared<VariableNode>(Var(1)),
-                std::make_shared<VariableNode>(Var(2))
+              std::make_shared<AddExpr>(
+                std::make_shared<VariableExpr>(Var(1)),
+                std::make_shared<VariableExpr>(Var(2))
               )
             ),
-            std::make_shared<DeclareStmt>(Var(4), std::make_shared<IntegerNode>("3")),
+            std::make_shared<DeclareStmt>(Var(4), std::make_shared<IntegerExpr>("3")),
             std::make_shared<IfStmt>(
-              std::make_shared<IntegerNode>("3"), // this should be a bool
+              std::make_shared<IntegerExpr>("3"), // this should be a bool
                 std::make_shared<BlockStmt>(
                   std::vector<std::shared_ptr<Stmt>>{
-                    std::make_shared<DeclareStmt>(Var(4), std::make_shared<IntegerNode>("3")), // shadowing
+                    std::make_shared<DeclareStmt>(Var(4), std::make_shared<IntegerExpr>("3")), // shadowing
                     // std::make_shared<ReturnStmt>(std::make_shared<VariableNode>(Var(4)))
                   }
                 ),
                 std::make_shared<BlockStmt>(
                   std::vector<std::shared_ptr<Stmt>>{
-                    std::make_shared<DeclareStmt>(Var(4), std::make_shared<IntegerNode>("3")),
+                    std::make_shared<DeclareStmt>(Var(4), std::make_shared<IntegerExpr>("3")),
                     // std::make_shared<ReturnStmt>(std::make_shared<VariableNode>(Var(4)))
                   }
                 )
             ),
-            std::make_shared<ReturnStmt>(std::make_shared<VariableNode>(Var(4)))
+            std::make_shared<ReturnStmt>(std::make_shared<VariableExpr>(Var(4)))
           }
         )
       )

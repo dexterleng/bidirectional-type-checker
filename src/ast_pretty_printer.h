@@ -17,109 +17,109 @@ public:
     : unionFind(unionFind) {
   }
 
-  void print(Expr& node) {
+  void print(Expr& expr) {
     isLastChild.clear();
-    visit(node);
+    visit(expr);
     std::cout << std::endl;
   }
 
-  void print(Stmt& node) {
+  void print(Stmt& stmt) {
     isLastChild.clear();
-    visit(node);
+    visit(stmt);
     std::cout << std::endl;
   }
 
   // Expression visitors
-  void visitInteger(IntegerNode& node) {
+  void visitInteger(IntegerExpr& expr) {
     printPrefix();
-    std::cout << "Integer(" << node.getValue() << ")" << std::endl;
+    std::cout << "Integer(" << expr.getValue() << ")" << std::endl;
   }
 
-  void visitDouble(DoubleNode& node) {
+  void visitDouble(DoubleExpr& expr) {
     printPrefix();
-    std::cout << "Double(" << node.getValue() << ")" << std::endl;
+    std::cout << "Double(" << expr.getValue() << ")" << std::endl;
   }
 
-  void visitVariable(VariableNode& node) {
+  void visitVariable(VariableExpr& expr) {
     printPrefix();
-    std::cout << "Variable " << node.var.name << std::endl;
+    std::cout << "Variable " << expr.var.name << std::endl;
   }
 
-  void visitApply(ApplyNode& node) {
+  void visitApply(ApplyExpr& expr) {
     printPrefix();
     std::cout << "Apply" << std::endl;
 
     isLastChild.push_back(false); // Function is not the last child
-    visit(*node.function);
+    visit(*expr.function);
     isLastChild.pop_back();
 
     isLastChild.push_back(true); // Argument is the last child
-    visit(*node.argument);
+    visit(*expr.argument);
     isLastChild.pop_back();
   }
 
-  void visitAdd(AddNode& node) {
+  void visitAdd(AddExpr& expr) {
     printPrefix();
     std::cout << "Add" << std::endl;
 
     isLastChild.push_back(false); // Left is not the last child
-    visit(*node.left);
+    visit(*expr.left);
     isLastChild.pop_back();
 
     isLastChild.push_back(true); // Right is the last child
-    visit(*node.right);
+    visit(*expr.right);
     isLastChild.pop_back();
   }
 
   // Statement visitors
-  void visitBlock(BlockStmt& node) {
+  void visitBlock(BlockStmt& stmt) {
     printPrefix();
     std::cout << "Block" << std::endl;
 
-    for (size_t i = 0; i < node.statements.size(); i++) {
-      bool isLast = (i == node.statements.size() - 1);
+    for (size_t i = 0; i < stmt.statements.size(); i++) {
+      bool isLast = (i == stmt.statements.size() - 1);
       isLastChild.push_back(isLast);
-      visit(*node.statements[i]);
+      visit(*stmt.statements[i]);
       isLastChild.pop_back();
     }
   }
 
-  void visitDeclare(DeclareStmt& node) {
+  void visitDeclare(DeclareStmt& stmt) {
     printPrefix();
-    std::cout << "Declare " << node.var.name << std::endl;
+    std::cout << "Declare " << stmt.var.name << std::endl;
 
     isLastChild.push_back(true); // Expression is the only child
-    visit(*node.expression);
+    visit(*stmt.expression);
     isLastChild.pop_back();
   }
 
-  void visitFunction(FunctionStmt& node) {
+  void visitFunction(FunctionStmt& stmt) {
     printPrefix();
-    std::cout << "Function " << node.name.name << "(";
+    std::cout << "Function " << stmt.name.name << "(";
 
-    for (size_t i = 0; i < node.params.size(); ++i) {
-      std::cout << node.params[i].name;
-      if (i < node.params.size() - 1) {
+    for (size_t i = 0; i < stmt.params.size(); ++i) {
+      std::cout << stmt.params[i].name;
+      if (i < stmt.params.size() - 1) {
         std::cout << ", ";
       }
     }
     std::cout << ")" << std::endl;
 
     isLastChild.push_back(true);
-    visit(*node.body);
+    visit(*stmt.body);
     isLastChild.pop_back();
   }
 
-  void visitReturn(ReturnStmt& node) {
+  void visitReturn(ReturnStmt& stmt) {
     printPrefix();
     std::cout << "Return" << std::endl;
 
     isLastChild.push_back(true);
-    visit(*node.expression);
+    visit(*stmt.expression);
     isLastChild.pop_back();
   }
 
-  void visitIf(IfStmt& node) {
+  void visitIf(IfStmt& stmt) {
     printPrefix();
     std::cout << "If" << std::endl;
 
@@ -128,26 +128,26 @@ public:
     printPrefix();
     std::cout << "Condition" << std::endl;
     isLastChild.push_back(true);  // Condition expression is the last in this branch
-    visit(*node.condition);
+    visit(*stmt.condition);
     isLastChild.pop_back();
     isLastChild.pop_back();
 
     // Print then branch
-    isLastChild.push_back(!node.elseBranch.has_value()); // Then branch is the last child only if no else branch
+    isLastChild.push_back(!stmt.elseBranch.has_value()); // Then branch is the last child only if no else branch
     printPrefix();
     std::cout << "Then" << std::endl;
     isLastChild.push_back(true);  // Then body is the last in this branch
-    visit(*node.thenBranch);
+    visit(*stmt.thenBranch);
     isLastChild.pop_back();
     isLastChild.pop_back();
 
     // Print else branch if it exists
-    if (node.elseBranch.has_value()) {
+    if (stmt.elseBranch.has_value()) {
       isLastChild.push_back(true); // Else branch is the last child
       printPrefix();
       std::cout << "Else" << std::endl;
       isLastChild.push_back(true); // Else body is the last in this branch
-      visit(**node.elseBranch);
+      visit(**stmt.elseBranch);
       isLastChild.pop_back();
       isLastChild.pop_back();
     }
