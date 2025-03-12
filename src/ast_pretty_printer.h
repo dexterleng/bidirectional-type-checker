@@ -9,7 +9,6 @@
 class ASTPrettyPrinter : public ASTVisitor<ASTPrettyPrinter, void, void> {
 public:
   using ASTVisitor::visit;     // Ensure we don't hide the base class expression `visit`
-  using ASTVisitor::visitStmt; // Ensure we don't hide the base class statement `visitStmt`
 
   UnionFind* unionFind;
   std::vector<bool> isLastChild; // Track whether each level is the last child
@@ -24,9 +23,9 @@ public:
     std::cout << std::endl;
   }
 
-  void printStatement(Stmt& node) {
+  void print(Stmt& node) {
     isLastChild.clear();
-    visitStmt(node);
+    visit(node);
     std::cout << std::endl;
   }
 
@@ -80,7 +79,7 @@ public:
     for (size_t i = 0; i < node.statements.size(); i++) {
       bool isLast = (i == node.statements.size() - 1);
       isLastChild.push_back(isLast);
-      visitStmt(*node.statements[i]);
+      visit(*node.statements[i]);
       isLastChild.pop_back();
     }
   }
@@ -106,12 +105,9 @@ public:
     }
     std::cout << ")" << std::endl;
 
-    for (size_t i = 0; i < node.body.size(); i++) {
-      bool isLast = (i == node.body.size() - 1);
-      isLastChild.push_back(isLast);
-      visitStmt(*node.body[i]);
-      isLastChild.pop_back();
-    }
+    isLastChild.push_back(true);
+    visit(*node.body);
+    isLastChild.pop_back();
   }
 
   void visitReturn(ReturnStmt& node) {

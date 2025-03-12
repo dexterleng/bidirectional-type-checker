@@ -57,23 +57,25 @@ int main() {
         Var(0),
         std::vector{ Var(1, std::make_shared<IntegerType>()), Var(2, std::make_shared<IntegerType>()) },
         std::make_shared<IntegerType>(),
-        std::vector<std::shared_ptr<Stmt>>{
-          std::make_shared<AssignStmt>(
-            Var(3),
-            std::make_shared<AddNode>(
-              std::make_shared<VariableNode>(Var(1)),
-              std::make_shared<VariableNode>(Var(2))
-            )
-          ),
-          std::make_shared<AssignStmt>(Var(4), std::make_shared<IntegerNode>("3")),
-          std::make_shared<ReturnStmt>(std::make_shared<VariableNode>(Var(4)))
-        }
+        std::make_shared<BlockStmt>(
+          std::vector<std::shared_ptr<Stmt>>{
+            std::make_shared<AssignStmt>(
+              Var(3),
+              std::make_shared<AddNode>(
+                std::make_shared<VariableNode>(Var(1)),
+                std::make_shared<VariableNode>(Var(2))
+              )
+            ),
+            std::make_shared<AssignStmt>(Var(4), std::make_shared<IntegerNode>("3")),
+            std::make_shared<ReturnStmt>(std::make_shared<VariableNode>(Var(4)))
+          }
+        )
       )
     }
   );
 
   ASTPrettyPrinter printer(nullptr);
-  printer.printStatement(*ast);
+  printer.print(*ast);
 
   TypeInference inference;
   inference.perform(*ast);

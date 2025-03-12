@@ -26,7 +26,7 @@ public:
     }
   }
 
-  StmtRetTy visitStmt(Stmt& node, Args... args) {
+  StmtRetTy visit(Stmt& node, Args... args) {
     switch (node.kind) {
       case StmtKind::Block:
         return static_cast<ImplClass*>(this)->visitBlock(static_cast<BlockStmt&>(node), std::forward<Args>(args)...);

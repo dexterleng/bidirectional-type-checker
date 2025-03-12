@@ -87,9 +87,9 @@ public:
   Var name;
   std::vector<Var> params;
   std::shared_ptr<Type> returnType;
-  std::vector<std::shared_ptr<Stmt>> body;
+  std::shared_ptr<BlockStmt> body;
 
-  FunctionStmt(Var name, std::vector<Var> params, std::shared_ptr<Type> returnType, std::vector<std::shared_ptr<Stmt>> body)
+  FunctionStmt(Var name, std::vector<Var> params, std::shared_ptr<Type> returnType, std::shared_ptr<BlockStmt> body)
     : Stmt(StmtKind::Function),
       name(std::move(name)),
       params(std::move(params)),
@@ -104,19 +104,8 @@ public:
 
     if (name != otherFunc.name) return false;
     if (params != otherFunc.params) return false;
-
-    if (body.size() != otherFunc.body.size()) {
-      return false;
-    }
-
-    for (size_t i = 0; i < body.size(); i++) {
-      if (*body[i] != *otherFunc.body[i]) {
-        return false;
-      }
-    }
-
     if (*returnType != *otherFunc.returnType) return false;
-
+    if (*body != *otherFunc.body) return false;
     return true;
   }
 };

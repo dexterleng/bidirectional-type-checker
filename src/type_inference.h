@@ -73,7 +73,6 @@ private:
         }
       }
       case TypeKind::Function: {
-        // For function types, recursively substitute in argument and return types
         auto funType = static_pointer_cast<FunctionType>(ty);
         auto argType = substitute(funType->from);
         auto retType = substitute(funType->to);
@@ -91,18 +90,14 @@ private:
         break;
       }
       case ExprKind::Variable: {
-        // For variable nodes, substitute the type.
         auto& varNode = static_cast<VariableNode&>(node);
         auto substitutedType = substitute(varNode.var.type.value());
         varNode.var.type = substitutedType;
         break;
       }
       case ExprKind::Apply: {
-        // For apply nodes, substitute in both the function and argument parts
         auto& applyNode = static_cast<ApplyNode&>(node);
-        // First substitute in the function
         substituteAst(*applyNode.function);
-        // Then substitute in the argument
         substituteAst(*applyNode.argument);
         break;
       }
@@ -133,17 +128,12 @@ private:
         break;
       }
       case StmtKind::Function: {
-        // For function nodes, substitute the parameters and then the body
         auto& funStmt = static_cast<FunctionStmt&>(node);
-        // Substitute the parameters
         for (auto& param : funStmt.params) {
           auto paramType = substitute(param.type.value());
           param.type = paramType;
         }
-        // Recursively substitute the body
-        for (auto& stmt : funStmt.body) {
-          substituteAst(*stmt);
-        }
+        substituteAst(*funStmt.body);
         break;
       }
       case StmtKind::Return: {
@@ -315,11 +305,15 @@ private:
       case StmtKind::Block: {
         auto& block = static_cast<BlockStmt&>(node);
         beginScope();
+        auto fallsThrough = true;
         for (auto& stmt : block.statements) {
-          infer(*stmt);
+          auto stmtFallsThrough = infer(*stmt);
+          if (!stmtFallsThrough) {
+            fallsThrough = false;
+          }
         }
         endScope();
-        return false; // FIXME
+        return fallsThrough;
       }
       case StmtKind::Assign: {
         auto& assignStmt = static_cast<AssignStmt&>(node);
@@ -341,17 +335,9 @@ private:
           define(param, param.type.value());
         }
 
-        auto returnType = funStmt.returnType;
-        auto fallsThrough = true;
-        for (auto& stmt : funStmt.body) {
-          auto stmtFallsThrough = infer(*stmt);
-          if (!stmtFallsThrough) {
-            fallsThrough = false;
-          }
-        }
-
         // Check if function falls through without returning
-        if (fallsThrough && funStmt.returnType->kind != TypeKind::Void) {
+        auto bodyFallsThrough = infer(*funStmt.body);
+        if (bodyFallsThrough && funStmt.returnType->kind != TypeKind::Void) {
           throw TypeNotEqualError(*funStmt.returnType, VoidType());
         }
 
