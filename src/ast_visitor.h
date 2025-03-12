@@ -32,6 +32,8 @@ public:
         return static_cast<ImplClass*>(this)->visitBlockStmt(static_cast<BlockStmt&>(stmt), std::forward<Args>(args)...);
       case StmtKind::Declare:
         return static_cast<ImplClass*>(this)->visitDeclareStmt(static_cast<DeclareStmt&>(stmt), std::forward<Args>(args)...);
+      case StmtKind::Assign:
+        return static_cast<ImplClass*>(this)->visitAssignStmt(static_cast<AssignStmt&>(stmt), std::forward<Args>(args)...);
       case StmtKind::Function:
         return static_cast<ImplClass*>(this)->visitFunctionStmt(static_cast<FunctionStmt&>(stmt), std::forward<Args>(args)...);
       case StmtKind::Return:

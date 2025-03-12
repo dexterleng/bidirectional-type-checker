@@ -93,6 +93,15 @@ public:
     isLastChild.pop_back();
   }
 
+  void visitAssignStmt(AssignStmt& stmt) {
+    printPrefix();
+    std::cout << "Assign " << stmt.var.name << std::endl;
+
+    isLastChild.push_back(true);
+    visit(*stmt.expression);
+    isLastChild.pop_back();
+  }
+
   void visitFunctionStmt(FunctionStmt& stmt) {
     printPrefix();
     std::cout << "Function " << stmt.name.name << "(";

@@ -123,8 +123,14 @@ private:
       }
       case StmtKind::Declare: {
         auto& declStmt = static_cast<DeclareStmt&>(stmt);
-        auto argType = substitute(declStmt.var.type.value());
-        declStmt.var.type = argType;
+        auto varType = substitute(declStmt.var.type.value());
+        declStmt.var.type = varType;
+        break;
+      }
+      case StmtKind::Assign: {
+        auto& assignStmt = static_cast<AssignStmt&>(stmt);
+        auto varType = substitute(assignStmt.var.type.value());
+        assignStmt.var.type = varType;
         break;
       }
       case StmtKind::Function: {
@@ -330,6 +336,13 @@ private:
         auto exprType = infer(*declStmt.expression);
         define(declStmt.var, exprType);
         declStmt.var.type = exprType;
+        return true;
+      }
+      case StmtKind::Assign: {
+        auto& assignStmt = static_cast<AssignStmt&>(stmt);
+        auto varType = lookup(assignStmt.var);
+        check(*assignStmt.expression, varType);
+        assignStmt.var.type = varType;
         return true;
       }
       case StmtKind::Function: {
