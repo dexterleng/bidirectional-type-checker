@@ -23,6 +23,8 @@ public:
         return static_cast<ImplClass*>(this)->visitApplyExpr(static_cast<ApplyExpr&>(expr), std::forward<Args>(args)...);
       case ExprKind::Binary:
         return static_cast<ImplClass*>(this)->visitBinaryExpr(static_cast<BinaryExpr&>(expr), std::forward<Args>(args)...);
+      case ExprKind::Unary:
+        return static_cast<ImplClass*>(this)->visitUnaryExpr(static_cast<UnaryExpr&>(expr), std::forward<Args>(args)...);
       default:
         throw std::runtime_error("Unknown ExprKind");
     }

@@ -37,7 +37,8 @@ enum class ExprKind {
   Boolean,
   Variable,
   Apply,
-  Binary
+  Binary,
+  Unary,
 };
 
 class Expr {
@@ -196,6 +197,39 @@ public:
     auto leftEqual = *left == *otherBinary.left;
     auto rightEqual = *right == *otherBinary.right;
     return leftEqual && rightEqual;
+  }
+};
+
+enum class UnaryOperator {
+  Not,
+  Negate,
+};
+
+inline std::string toString(UnaryOperator op) {
+  switch (op) {
+    case UnaryOperator::Not: return "!";
+    case UnaryOperator::Negate: return "-";
+    default: return "Unknown UnaryOperator";
+  }
+}
+
+class UnaryExpr : public Expr {
+public:
+  UnaryOperator op;
+  std::shared_ptr<Expr> operand;
+
+  UnaryExpr(UnaryOperator op, std::shared_ptr<Expr> operand)
+    : Expr(ExprKind::Unary),
+      op(op),
+      operand(std::move(operand)) {
+  }
+
+  bool operator==(const Expr& other) const override {
+    if (kind != other.kind) {
+      return false;
+    }
+    const auto& otherUnary = static_cast<const UnaryExpr&>(other);
+    return op == otherUnary.op && *operand == *otherUnary.operand;
   }
 };
 

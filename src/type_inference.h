@@ -108,6 +108,11 @@ private:
         substituteAst(*binaryExpr.right);
         break;
       }
+      case ExprKind::Unary: {
+        auto& unaryExpr = static_cast<UnaryExpr&>(expr);
+        substituteAst(*unaryExpr.operand);
+        break;
+      }
       default:
         throw std::runtime_error("Unknown ExprKind");
     }
@@ -314,6 +319,20 @@ private:
         auto constraint = std::make_unique<EqualTypeConstraint>(leftType, rightType);
         this->constraints.push_back(std::move(constraint));
         return leftType;
+        // FIXME: check that both are either Int Int or Double Double
+      }
+      case ExprKind::Unary: {
+        auto& unary = static_cast<UnaryExpr&>(expr);
+        auto operandType = infer(*unary.operand);
+        return operandType;
+        // FIXME: check this after substitution.
+        // if (op == UnaryOperator::Not) {
+        //   this->constraints.push_back(
+        //     std::make_unique<EqualTypeConstraint>(operandType, std::make_shared<BoolType>())
+        //   );
+        // } else if (op == UnaryOperator::Negate) {
+        //   // can be either int or double
+        // }
       }
       default:
         throw std::runtime_error("Unknown ExprKind");

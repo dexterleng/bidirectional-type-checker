@@ -76,6 +76,15 @@ public:
     isLastChild.pop_back();
   }
 
+  void visitUnaryExpr(UnaryExpr& expr) {
+    printPrefix();
+    std::cout << "Unary (" << toString(expr.op) << ")" << std::endl;
+
+    isLastChild.push_back(true);
+    visit(*expr.operand);
+    isLastChild.pop_back();
+  }
+
   // Statement visitors
   void visitBlockStmt(BlockStmt& stmt) {
     printPrefix();
