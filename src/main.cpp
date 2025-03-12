@@ -23,7 +23,8 @@ int main() {
             ),
             std::make_shared<DeclareStmt>(Var(4), std::make_shared<IntegerExpr>("3")),
             std::make_shared<IfStmt>(
-              std::make_shared<IntegerExpr>("3"), // this should be a bool
+              // std::make_shared<IntegerExpr>("3"), // this should be a bool
+              std::make_shared<BoolExpr>(true),
                 std::make_shared<BlockStmt>(
                   std::vector<std::shared_ptr<Stmt>>{
                     std::make_shared<DeclareStmt>(Var(4), std::make_shared<IntegerExpr>("3")), // shadowing
@@ -33,7 +34,7 @@ int main() {
                 std::make_shared<BlockStmt>(
                   std::vector<std::shared_ptr<Stmt>>{
                     std::make_shared<AssignStmt>(Var(4), std::make_shared<IntegerExpr>("3")),
-                    // std::make_shared<AssignStmt>(Var(4), std::make_shared<DoubleExpr>("3")),
+                    // std::make_shared<AssignStmt>(Var(4), std::make_shared<BoolExpr>(true)),
                     // std::make_shared<AssignStmt>(Var(6), std::make_shared<DoubleExpr>("3")),
                     // std::make_shared<ReturnStmt>(std::make_shared<VariableNode>(Var(4)))
                   }

@@ -40,6 +40,11 @@ public:
     std::cout << "Double(" << expr.getValue() << ")" << std::endl;
   }
 
+  void visitBoolExpr(BoolExpr& expr) {
+    printPrefix();
+    std::cout << "Bool(" << (expr.getValue() ? "true" : "false") << ")" << std::endl;
+  }
+
   void visitVariableExpr(VariableExpr& expr) {
     printPrefix();
     std::cout << "Variable " << expr.var.name << std::endl;

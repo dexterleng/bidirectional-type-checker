@@ -86,7 +86,8 @@ private:
   void substituteAst(Expr& expr) {
     switch (expr.kind) {
       case ExprKind::Integer:
-      case ExprKind::Double: {
+      case ExprKind::Double:
+      case ExprKind::Boolean: {
         break;
       }
       case ExprKind::Variable: {
@@ -232,6 +233,7 @@ private:
       case TypeKind::Void:
       case TypeKind::Integer:
       case TypeKind::Double:
+      case TypeKind::Boolean:
         return false;
       case TypeKind::Variable: {
         auto varType = static_pointer_cast<VariableType>(type);
@@ -251,6 +253,7 @@ private:
       case TypeKind::Void:
       case TypeKind::Integer:
       case TypeKind::Double:
+      case TypeKind::Boolean:
         return _type;
       case TypeKind::Variable: {
         auto type = static_pointer_cast<VariableType>(_type);
@@ -285,6 +288,9 @@ private:
       }
       case ExprKind::Double: {
         return std::make_shared<DoubleType>();
+      }
+      case ExprKind::Boolean: {
+        return std::make_shared<BoolType>();
       }
       case ExprKind::Variable: {
         auto& varExpr = static_cast<VariableExpr&>(expr);
@@ -406,6 +412,10 @@ private:
     }
 
     if (expr.kind == ExprKind::Double && type->kind == TypeKind::Double) {
+      return;
+    }
+
+    if (expr.kind == ExprKind::Boolean && type->kind == TypeKind::Boolean) {
       return;
     }
 

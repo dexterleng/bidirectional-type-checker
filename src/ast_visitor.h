@@ -15,6 +15,8 @@ public:
         return static_cast<ImplClass*>(this)->visitIntegerExpr(static_cast<IntegerExpr&>(expr), std::forward<Args>(args)...);
       case ExprKind::Double:
         return static_cast<ImplClass*>(this)->visitDoubleExpr(static_cast<DoubleExpr&>(expr), std::forward<Args>(args)...);
+      case ExprKind::Boolean:
+        return static_cast<ImplClass*>(this)->visitBoolExpr(static_cast<BoolExpr&>(expr), std::forward<Args>(args)...);
       case ExprKind::Variable:
         return static_cast<ImplClass*>(this)->visitVariableExpr(static_cast<VariableExpr&>(expr), std::forward<Args>(args)...);
       case ExprKind::Apply:

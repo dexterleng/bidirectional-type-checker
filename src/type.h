@@ -8,6 +8,7 @@ enum class TypeKind {
   Void,
   Integer,
   Double,
+  Boolean,
   Variable,
   Function,
 };
@@ -71,6 +72,15 @@ public:
 
   std::string toString() const override {
     return "DoubleType";
+  }
+};
+
+class BoolType : public Type {
+public:
+  explicit BoolType() : Type(TypeKind::Boolean) {}
+
+  std::string toString() const override {
+    return "BoolType";
   }
 };
 

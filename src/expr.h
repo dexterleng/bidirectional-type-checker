@@ -34,6 +34,7 @@ struct Var {
 enum class ExprKind {
   Integer,
   Double,
+  Boolean,
   Variable,
   Apply,
   Binary
@@ -90,6 +91,26 @@ public:
     }
     const auto& otherDouble = static_cast<const DoubleExpr&>(other);
     return literal == otherDouble.literal;
+  }
+};
+
+class BoolExpr : public Expr {
+public:
+  bool literal;
+
+  explicit BoolExpr(bool literal)
+    : Expr(ExprKind::Boolean), literal(literal) {}
+
+  bool getValue() const {
+    return literal;
+  }
+
+  bool operator==(const Expr& other) const override {
+    if (kind != other.kind) {
+      return false;
+    }
+    const auto& otherBool = static_cast<const BoolExpr&>(other);
+    return literal == otherBool.literal;
   }
 };
 
