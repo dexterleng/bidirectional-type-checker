@@ -30,8 +30,8 @@ public:
     switch (node.kind) {
       case StmtKind::Block:
         return static_cast<ImplClass*>(this)->visitBlock(static_cast<BlockStmt&>(node), std::forward<Args>(args)...);
-      case StmtKind::Assign:
-        return static_cast<ImplClass*>(this)->visitAssign(static_cast<AssignStmt&>(node), std::forward<Args>(args)...);
+      case StmtKind::Declare:
+        return static_cast<ImplClass*>(this)->visitDeclare(static_cast<DeclareStmt&>(node), std::forward<Args>(args)...);
       case StmtKind::Function:
         return static_cast<ImplClass*>(this)->visitFunction(static_cast<FunctionStmt&>(node), std::forward<Args>(args)...);
       case StmtKind::Return:

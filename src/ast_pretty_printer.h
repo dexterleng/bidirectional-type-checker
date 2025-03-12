@@ -84,9 +84,9 @@ public:
     }
   }
 
-  void visitAssign(AssignStmt& node) {
+  void visitDeclare(DeclareStmt& node) {
     printPrefix();
-    std::cout << "Assign " << node.var.name << std::endl;
+    std::cout << "Declare " << node.var.name << std::endl;
 
     isLastChild.push_back(true); // Expression is the only child
     visit(*node.expression);

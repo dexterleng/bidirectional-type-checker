@@ -5,7 +5,7 @@
 
 enum class StmtKind {
   Block,
-  Assign,
+  Declare,
   Function,
   Return,
   If
@@ -54,13 +54,13 @@ public:
   }
 };
 
-class AssignStmt : public Stmt {
+class DeclareStmt : public Stmt {
 public:
   Var var;
   std::shared_ptr<Expr> expression;
 
-  AssignStmt(Var  var, std::shared_ptr<Expr> expression)
-    : Stmt(StmtKind::Assign),
+  DeclareStmt(Var  var, std::shared_ptr<Expr> expression)
+    : Stmt(StmtKind::Declare),
       var(std::move(var)),
       expression(std::move(expression)) {}
 
@@ -69,9 +69,9 @@ public:
       return false;
     }
 
-    const auto& otherAssign = static_cast<const AssignStmt&>(other);
-    return var == otherAssign.var &&
-      *expression == *otherAssign.expression;
+    const auto& otherDecl = static_cast<const DeclareStmt&>(other);
+    return var == otherDecl.var &&
+      *expression == *otherDecl.expression;
   }
 };
 

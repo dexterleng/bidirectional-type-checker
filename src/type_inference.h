@@ -121,10 +121,10 @@ private:
         }
         break;
       }
-      case StmtKind::Assign: {
-        auto& assignStmt = static_cast<AssignStmt&>(node);
-        auto argType = substitute(assignStmt.var.type.value());
-        assignStmt.var.type = argType;
+      case StmtKind::Declare: {
+        auto& declStmt = static_cast<DeclareStmt&>(node);
+        auto argType = substitute(declStmt.var.type.value());
+        declStmt.var.type = argType;
         break;
       }
       case StmtKind::Function: {
@@ -324,12 +324,12 @@ private:
         endScope();
         return fallsThrough;
       }
-      case StmtKind::Assign: {
-        auto& assignStmt = static_cast<AssignStmt&>(node);
-        declare(assignStmt.var);
-        auto exprType = infer(*assignStmt.expression);
-        define(assignStmt.var, exprType);
-        assignStmt.var.type = exprType;
+      case StmtKind::Declare: {
+        auto& declStmt = static_cast<DeclareStmt&>(node);
+        declare(declStmt.var);
+        auto exprType = infer(*declStmt.expression);
+        define(declStmt.var, exprType);
+        declStmt.var.type = exprType;
         return true;
       }
       case StmtKind::Function: {
